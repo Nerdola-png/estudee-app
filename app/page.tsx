@@ -2,14 +2,15 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import './estudee.css'; // Importe o arquivo CSS que criaremos no passo 2
+import './estudee.css';
+import CadastroPage from './cadastro/page';
+import { pathToFileURL } from 'node:url';
 
 export default function EstudeeLandingPage() {
   const router = useRouter();
 
-  // Função genérica preparada para as chamadas de tela
   const handleNavigation = (path: string) => {
-    // router.push(path); // Descomente e adicione o caminho quando as telas existirem
+    router.push(path);
     console.log(`Navegar para: ${path}`);
   };
 
@@ -80,7 +81,7 @@ export default function EstudeeLandingPage() {
             </button>
             <button
               className="btn-secondary"
-              onClick={() => handleNavigation('/como-funciona')}
+              onClick={() => handleNavigation('/cadastro')}
             >
               Ver como funciona
             </button>
