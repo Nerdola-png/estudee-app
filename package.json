@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "node --env-file=.env.local supabase/scripts/importar-questoes.mjs",
+    "pix:ativar": "node --env-file=.env.local supabase/scripts/ativar-pix-manual.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

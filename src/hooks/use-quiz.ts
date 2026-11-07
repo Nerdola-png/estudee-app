@@ -33,6 +33,8 @@ const sessaoSchema = z.object({
   status: z.enum(['em_andamento', 'finalizado', 'abandonado']),
   total_questoes: z.number().int(),
   acertos: z.number().int(),
+  started_at: z.string(),
+  tempo_ativo_segundos: z.number().int(),
   questoes: z.array(questaoSessaoSchema),
 });
 
@@ -62,9 +64,29 @@ export function useOpcoesSimulado() {
       if (bancasResult.error) throw bancasResult.error;
       if (materiasResult.error) throw materiasResult.error;
 
+      const [planoResult, planosResult] = await Promise.all([
+        supabase.rpc('plano_atual_usuario'),
+        supabase.from('planos_config').select('plano,tamanhos_permitidos,ranking_visivel'),
+      ]);
+
+      if (planoResult.error) throw planoResult.error;
+      if (planosResult.error) throw planosResult.error;
+
+      const planoAtual = planoResult.data;
+      const planoAtualConfig = planosResult.data.find((item) => item.plano === planoAtual);
+      const planoPremium = planosResult.data.find((item) => item.plano === 'premium');
+
+      if (!planoAtualConfig || !planoPremium) {
+        throw new Error('Configuração de planos indisponível.');
+      }
+
       return {
         bancas: bancasResult.data,
         materias: materiasResult.data,
+        plano: planoAtual,
+        rankingVisivel: planoAtualConfig.ranking_visivel,
+        tamanhosPermitidos: planoAtualConfig.tamanhos_permitidos,
+        tamanhosPremium: planoPremium.tamanhos_permitidos,
       };
     },
     staleTime: 5 * 60 * 1000,
@@ -115,11 +137,16 @@ export function useResponderQuestao(sessaoId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: { questaoId: string; resposta: string }) => {
+    mutationFn: async (input: {
+      questaoId: string;
+      resposta: string;
+      tempoAtivoSegundos: number;
+    }) => {
       const { data, error } = await supabase.rpc('responder_questao', {
         p_sessao_id: sessaoId,
         p_questao_id: input.questaoId,
         p_resposta: input.resposta,
+        p_tempo_ativo_segundos: input.tempoAtivoSegundos,
       });
 
       if (error) throw error;
@@ -127,6 +154,106 @@ export function useResponderQuestao(sessaoId: string) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['sessao-quiz', sessaoId] });
+    },
+  });
+}
+
+export function useRegistrarTempoAtivo(sessaoId: string) {
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async (tempoAtivoSegundos: number) => {
+      const { data, error } = await supabase.rpc('registrar_tempo_ativo', {
+        p_sessao_id: sessaoId,
+        p_tempo_ativo_segundos: tempoAtivoSegundos,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useFinalizarSessao(sessaoId: string) {
+  const supabase = createClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc('finalizar_sessao', {
+        p_sessao_id: sessaoId,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+const rankingSchema = z.object({
+  escopo: z.enum(['nacional', 'estadual', 'municipal']),
+  periodo: z.enum(['geral', 'semanal', 'mensal']),
+  ranking: z.array(z.object({
+    posicao: z.number().int(),
+    nickname: z.string().nullable(),
+    pontos: z.number(),
+  })),
+  minha_posicao: z.object({
+    escopo: z.string(),
+    periodo: z.string(),
+    posicao: z.number().int().nullable(),
+    pontos: z.number().nullable(),
+  }),
+});
+
+export type Ranking = z.infer<typeof rankingSchema>;
+
+export function useRanking(
+  escopo: 'nacional' | 'estadual' | 'municipal',
+  periodo: 'geral' | 'semanal' | 'mensal',
+  enabled = true,
+) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['ranking', escopo, periodo],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('obter_ranking', {
+        p_escopo: escopo,
+        p_periodo: periodo,
+      });
+
+      if (error) throw error;
+      return rankingSchema.parse(data);
+    },
+  });
+}
+
+const posicaoSchema = z.object({
+  escopo: z.string(),
+  periodo: z.string(),
+  posicao: z.number().int().nullable(),
+  pontos: z.number().nullable(),
+});
+
+export function useMinhaPosicao(
+  escopo: 'nacional' | 'estadual' | 'municipal',
+  periodo: 'geral' | 'semanal' | 'mensal',
+  enabled = true,
+) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['minha-posicao', escopo, periodo],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('obter_minha_posicao', {
+        p_escopo: escopo,
+        p_periodo: periodo,
+      });
+
+      if (error) throw error;
+      return posicaoSchema.parse(data);
     },
   });
 }

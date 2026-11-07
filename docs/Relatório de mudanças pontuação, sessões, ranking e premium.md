@@ -4,7 +4,7 @@ Data: 06/11/2026. Base: auditoria do projeto de 06/11/2026 e decisões de produt
 
 ## 1. Objetivo
 
-Este relatório lista as mudanças de código, banco e produto necessárias para implementar o diferencial do simulado gamificado: pontuação variável calculada no servidor, sessões com tamanhos por plano, ranking local, estadual e nacional restrito a premium e ativação de premium por pagamento de terceiros (Stripe), com a integração preparada para ser ligada depois. Ele complementa os achados P0/P1/P2 da auditoria, que continuam válidos e são pré-requisito para publicar.
+Este relatório lista as mudanças de código, banco e produto necessárias para implementar o diferencial do simulado gamificado: pontuação variável calculada no servidor, sessões com tamanhos por plano, ranking local, estadual e nacional restrito a premium e ativação de premium por Pix manual, confirmada pela equipe e registrada no banco. Não há integração com provedor de pagamentos, checkout automático ou webhook. Ele complementa os achados P0/P1/P2 da auditoria, que continuam válidos e são pré-requisito para publicar.
 
 ## 2. Decisões de produto fechadas
 
@@ -19,7 +19,7 @@ Este relatório lista as mudanças de código, banco e produto necessárias para
 | Tamanhos (premium) | 10 a 40 mais 50, 60, 70, 80, 90 ou 100 questões |
 | Ranking | Local, estadual e nacional; visível apenas para premium; gratuitos também acumulam pontos |
 | Anti-farm | Apenas o primeiro acerto de cada questão por usuário pontua no ranking |
-| Premium | Pagamento por terceiros (Stripe): camada de pagamento preparada agora, integração ligada depois do v0 |
+| Premium | Pix manual; equipe confirma o pagamento e registra/ativa a assinatura no banco |
 
 ## 3. Fórmula de pontuação (versão 1)
 
@@ -96,7 +96,7 @@ Todas `SECURITY DEFINER`, com `search_path = ''`, verificação de `auth.uid()`,
 | `obter_resultado` (nova) | Devolver pontos, acertos, média por questão e agrupamento por matéria, somente para sessão finalizada do próprio usuário |
 | `obter_ranking` (nova) | Verificar plano premium no banco; aceitar escopo (nacional, UF, município) e período; devolver apenas nickname e dados autorizados (opt-in) |
 | `obter_minha_posicao` (nova) | Disponível a todos os planos, com apresentação limitada para gratuitos (base do gatilho de conversão); atualiza apenas na finalização |
-| `ativar_premium` (nova, interna) | Sem acesso por `authenticated`; chamada apenas pelo tratamento de webhook do provedor de pagamento (6.1) ou por admin como fallback manual, sempre no servidor com service-role e sem expor a chave ao client; idempotente e registra a origem, quem ativou e quando |
+| Ativação manual | A equipe confirma o Pix e registra a assinatura Premium em `assinaturas` por ferramenta administrativa segura. Clientes não recebem permissão de escrita na tabela nem ativam o próprio plano. |
 | Rotina de abandono (nova) | Via `pg_cron`: sessão sem atividade por 7 ou 30 dias vira `abandonada`; consolidar as respostas já dadas (decisão a confirmar) |
 
 ## 6. Segurança e configuração
@@ -108,41 +108,14 @@ Todas `SECURITY DEFINER`, com `search_path = ''`, verificação de `auth.uid()`,
 - Confirmar bucket e policies de Storage para avatar, restritas ao `auth.uid()`, com validação de tipo MIME e tamanho (item P1 da auditoria).
 - Registrar `formula_versao` em todas as respostas pontuadas.
 
-### 6.1 Preparação para pagamento via Stripe
+### 6.1 Pagamento por Pix manual
 
-O pagamento do premium será feito por um provedor terceiro, como o Stripe. O v0 não chama o provedor, mas a estrutura abaixo deixa o ponto de integração pronto para ser ligado depois, sem refatorar plano, ranking nem RPCs. A regra central: o plano premium só é concedido por evento confirmado do provedor, processado no servidor, nunca pelo client.
-
-**Camada de código (preparada agora)**
-
-- Interface `PaymentProvider` em `src/lib/payments/`, com os métodos `criarCheckout`, `criarPortalCliente` e `tratarWebhook`.
-- Duas implementações: `stripe.ts` (stub que retorna "não configurado" até a integração) e `manual.ts` (fallback de ativação por admin, enquanto o Stripe não estiver ligado).
-- Flag por variável de ambiente (`PAYMENT_PROVIDER` e `PAYMENTS_ENABLED`); com a flag desligada, o checkout exibe "indisponível".
-- Rotas server-side: `POST /api/payments/checkout` (exige usuário autenticado; o preço vem do servidor, nunca do client), `POST /api/payments/webhook` e, opcionalmente, `POST /api/payments/portal` (gerenciar ou cancelar assinatura).
-- Variáveis de ambiente (chave secreta, segredo do webhook, IDs de preço) documentadas em `.env.example`, nunca com prefixo `NEXT_PUBLIC_` e nunca no client.
-
-**Banco de dados**
-
-- `assinaturas` ganha: `provedor`, `provedor_cliente_id`, `provedor_assinatura_id`, `status` (ativa, cancelada, inadimplente, expirada), `periodo_fim`, `cancelar_no_fim` e `atualizado_em`.
-- Nova tabela `eventos_pagamento` (ID do evento do provedor com restrição de unicidade, tipo, payload e `processado_em`) para idempotência do webhook e auditoria, sem grant para clientes.
-- `planos_config` guarda o ID de preço do provedor por plano e periodicidade.
-- Função interna `aplicar_evento_assinatura` (generalização de `ativar_premium`): chamada só pelo handler do webhook com service-role, idempotente por ID de evento, concede o plano ao confirmar pagamento e rebaixa ao cancelar ou expirar.
-- O plano efetivo do usuário é derivado de uma assinatura ativa e de `periodo_fim`. `iniciar_sessao` e `obter_ranking` leem essa única fonte.
-
-**Eventos a tratar:** checkout concluído, pagamento de fatura bem-sucedido, falha de pagamento, assinatura atualizada ou cancelada, reembolso ou disputa.
-
-**Segurança**
-
-- Validar a assinatura de todo webhook antes de qualquer efeito; rejeitar o que não validar.
-- Ignorar eventos duplicados (idempotência por ID do evento).
-- Não conceder plano com base no redirecionamento de sucesso do client; só o webhook concede.
-- Service-role usada apenas no servidor, nunca exposta.
-- Nenhum dado de cartão passa pelo sistema; fica com o provedor.
-
-**Conformidade:** a política de privacidade deve citar o provedor de pagamento como operador de dados; os termos devem trazer preço, renovação, cancelamento e reembolso.
-
-**Testes:** webhook com assinatura inválida rejeitado; evento duplicado não duplica a concessão; cancelamento ou expiração rebaixa o plano; usuário comum não executa a função interna; com a flag desligada, o checkout fica indisponível.
-
-**Pendências para a integração:** confirmar o provedor, os meios de pagamento (cartão e, se disponível no provedor, Pix), a periodicidade (mensal ou anual), período de teste e política de reembolso.
+- Não há integração com Stripe ou outro provedor, checkout automático, API de pagamento ou webhook.
+- O pagamento é combinado fora do aplicativo. A equipe confirma o recebimento e registra a assinatura em `assinaturas` por meio administrativo seguro.
+- `assinaturas` é a fonte da verdade do plano; `plano_atual_usuario()` valida status e período. `profiles.plano` não deve ser editado nem usado para autorizar recursos.
+- Clientes não recebem escrita em `assinaturas`; nunca aceitar comprovante, valor, estado de pagamento ou ativação informados pelo client como prova de pagamento.
+- A ativação registra `origem = 'pix_manual'`, o operador em `ativado_por`, a data de início e o fim do período. O acesso expira pelo `periodo_fim`.
+- Antes de solicitar pagamento, informar e validar com a equipe a chave Pix, o valor, o período de acesso, cancelamento, reembolso e um canal de atendimento.
 
 ## 7. Mudanças no frontend
 
@@ -175,7 +148,7 @@ O pagamento do premium será feito por um provedor terceiro, como o Stripe. O v0
 
 ### 7.6 Premium e checkout
 
-- Marcar o checkout simulado como indisponível até a integração; criar a tela de checkout real já ligada à camada de pagamento (6.1), sem chamar o Stripe enquanto a integração estiver desativada.
+- Exibir que o Premium é contratado por Pix manual, combinado fora do app, com ativação após confirmação da equipe. Não criar checkout automático nem coletar pagamento/comprovante no client.
 - Exibir o plano real do usuário no perfil.
 
 ### 7.7 Estatísticas e telas demonstrativas
@@ -186,7 +159,7 @@ O pagamento do premium será feito por um provedor terceiro, como o Stripe. O v0
 ## 8. Conformidade e conteúdo
 
 - LGPD: ranking público exibe apenas nickname, com opt-in explícito; localização em nível agregado quando possível.
-- Criar as rotas `/termos` e `/privacidade`, hoje inexistentes, e corrigir os links da landing.
+- Criar as rotas `/termos` e `/privacidade`, hoje inexistentes, corrigir os links da landing e publicar valores/prazos do Pix manual quando forem definidos.
 - Confirmar licenciamento e direitos de uso das questões de bancas, principalmente por o produto ter plano pago.
 
 ## 9. Testes necessários
@@ -236,7 +209,7 @@ O pagamento do premium será feito por um provedor terceiro, como o Stripe. O v0
 3. **Pontuação:** função `calcular_pontos`, alteração de `iniciar_sessao`, `carregar_sessao` e `responder_questao`, `finalizar_sessao` e `obter_resultado`, com testes SQL.
 4. **Frontend do simulado:** seleção de tamanho por plano, contador, resultado com pontos.
 5. **Ranking mínimo:** agregados, visão nacional restrita a premium no banco; depois estadual e local.
-6. **Premium real:** camada de pagamento preparada para o Stripe (6.1), `ativar_premium` seguro, checkout marcado como indisponível até lá.
+6. **Premium manual:** documentar e operacionalizar confirmação do Pix e ativação segura em `assinaturas`; nenhum provedor ou checkout automático.
 7. **Limpeza e conformidade:** estatísticas reais, remoção de telas fictícias, `/termos`, `/privacidade`, landing.
 8. **Documentação:** atualizar `CLAUDE.md` (o escopo v0 passa a incluir pontos e ranking mínimo) e a especificação do produto para o schema atual (`ativo`, `gabarito`, `justificativa`, `sessoes`, `sessao_questoes`); resolver os placeholders das migrations históricas.
 9. **Escala:** otimizar seleção aleatória, middleware e landing com medições; adicionar monitoramento de erros e Web Vitals.

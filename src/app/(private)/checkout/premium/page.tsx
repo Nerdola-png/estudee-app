@@ -1,15 +1,4 @@
-'use client';
-
 import Link from 'next/link';
-import { Button } from '@/app/components/ui/button';
-
-const beneficos = [
-  'Ranking completo nacional e local',
-  'Estatísticas avançadas por matéria',
-  'Favoritos e histórico de desempenho',
-  'Simulados sem limitações',
-  'Acesso prioritário a novos recursos',
-];
 
 export default function PremiumCheckoutPage() {
   return (
@@ -17,71 +6,33 @@ export default function PremiumCheckoutPage() {
       <div className="mx-auto max-w-5xl">
         <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-accent">
-              Upgrade
-            </p>
-            <h1 className="font-bebas text-4xl tracking-[0.08em] text-text-base md:text-5xl">
-              Premium para evoluir
-            </h1>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-accent">Plano</p>
+            <h1 className="font-bebas text-4xl tracking-[0.08em] text-text-base md:text-5xl">Premium</h1>
           </div>
-
-          <Link
-            href="/dashboard"
-            className="w-fit rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-muted hover:text-text-base"
-          >
+          <Link href="/dashboard" className="w-fit rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-muted hover:text-text-base">
             Voltar ao painel
           </Link>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <section className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
           <div className="rounded-2xl border border-border bg-surface p-6 md:p-8">
-            <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
-              Plano premium
+            <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-accent">Acesso Premium</p>
+            <h2 className="mb-6 font-bebas text-4xl tracking-wide text-text-base">PAGAMENTO POR PIX MANUAL</h2>
+            <p className="text-sm leading-6 text-muted">
+              O pagamento é combinado e confirmado manualmente com a equipe. Depois da confirmação, o acesso Premium é ativado no banco de dados.
             </p>
-
-            <div className="mb-6 flex items-end gap-3">
-              <span className="text-5xl font-bold text-text-base">R$ 49,90</span>
-              <span className="pb-2 text-sm text-muted">/ mês</span>
-            </div>
-
-            <ul className="space-y-3">
-              {beneficos.map((beneficio) => (
-                <li key={beneficio} className="flex items-center gap-3 text-text-base">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green text-xs font-bold text-bg">
-                    ✓
-                  </span>
-                  <span>{beneficio}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="mt-4 text-sm leading-6 text-muted">
+              Esta página não inicia uma cobrança nem altera seu plano. A chave Pix, o valor e o prazo de acesso devem ser confirmados com a equipe antes do pagamento.
+            </p>
           </div>
 
           <div className="rounded-2xl border border-accent/40 bg-surface p-6">
-            <h2 className="mb-5 text-xl font-semibold text-text-base">Resumo do pedido</h2>
-
-            <div className="space-y-4 text-sm text-muted">
-              <div className="flex items-center justify-between">
-                <span>Plano</span>
-                <span className="font-medium text-text-base">Premium</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Preço</span>
-                <span className="font-medium text-text-base">R$ 49,90</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Tempo</span>
-                <span className="font-medium text-text-base">1 mês</span>
-              </div>
-            </div>
-
-            <div className="my-6 h-px bg-border" />
-
-            <Button className="w-full bg-accent text-bg hover:bg-accent2">
-              Confirmar pagamento
-            </Button>
-
-            <p className="mt-4 text-center text-xs text-muted">
-              Pagamento simulado — fluxo de UX em desenvolvimento.
+            <h2 className="mb-3 text-xl font-semibold text-text-base">Ainda não tem Premium?</h2>
+            <p className="text-sm leading-6 text-muted">
+              Fale com a equipe para receber os dados do Pix e as condições vigentes. Guarde o comprovante; a ativação acontece após a conferência.
+            </p>
+            <p className="mt-5 rounded-lg border border-border bg-bg/50 p-3 text-xs leading-5 text-muted">
+              Nenhum pagamento é processado pelo aplicativo. O Premium não é ativado por redirecionamento ou ação do usuário.
             </p>
           </div>
         </section>

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Field } from "@/app/components/Field";
 import { LeftPanel } from "@/app/components/LeftPanel";
@@ -19,15 +20,17 @@ import {
 import { cadastroSchema, type CadastroData } from "@/schema/cadastro";
 
 const ESTADOS_BR = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
-const CONCURSOS = ["Polícia Civil","Polícia Militar","Polícia Federal","Polícia Rodoviária Federal","Tribunal de Justiça (TJ)","Tribunal Regional Federal (TRF)","Ministério Público","Defensoria Pública","OAB","Banco do Brasil","Caixa Econômica Federal","INSS","Receita Federal","TCU / TCE","Prefeitura / Câmara Municipal","Não tenho certeza"];
+const CONCURSOS = ["Brigada Militar do Rio Grande do Sul (BM-RS)", "Polícia Civil do Rio Grande do Sul (PC-RS)", "Ainda não defini"];
 
 export default function CadastroPage() {
+  const router = useRouter();
   const supabase = createClient();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [showSenha, setShowSenha] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [signupWarning, setSignupWarning] = useState<string | null>(null);
 
   const {
     register,
@@ -60,6 +63,8 @@ export default function CadastroPage() {
           sobrenome: data.sobrenome.trim(),
           cidade: data.cidade.trim(),
           estado: data.estado,
+          telefone: data.telefone || null,
+          concurso_alvo: data.concurso_alvo || null,
         },
       },
     });
@@ -73,18 +78,41 @@ export default function CadastroPage() {
       return;
     }
 
-    if (authData.user && avatarFile) {
-      const ext = avatarFile.name.split(".").pop();
-      const path = `avatars/${authData.user.id}.${ext}`;
-      await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true });
-      await supabase.from("profiles").update({ avatar_url: path }).eq("id", authData.user.id);
+    if (!authData.user) {
+      setError("root", { message: "A conta não foi criada. Tente novamente." });
+      return;
     }
 
-    if (authData.user) {
-      await supabase.from("profiles").update({
-        telefone: data.telefone || null,
-        concurso_alvo: data.concurso_alvo || null,
-      }).eq("id", authData.user.id);
+    if (avatarFile && authData.session) {
+      const path = `${authData.user.id}/avatar`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, avatarFile, {
+          cacheControl: "3600",
+          contentType: avatarFile.type,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        setSignupWarning("Sua conta foi criada, mas não foi possível salvar a foto. Você poderá tentar novamente no perfil.");
+      } else {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ avatar_url: path })
+          .eq("id", authData.user.id);
+
+        if (profileError) {
+          setSignupWarning("Sua conta e a foto foram criadas, mas não foi possível atualizar o perfil. Tente novamente no perfil.");
+        }
+      }
+    } else if (avatarFile) {
+      setSignupWarning("Sua conta foi criada. Depois de confirmar o e-mail, entre no perfil para adicionar a foto.");
+    }
+
+    if (authData.session) {
+      router.replace("/dashboard");
+      router.refresh();
+      return;
     }
 
     setSuccess(true);
@@ -102,6 +130,11 @@ export default function CadastroPage() {
               Enviamos um link para{" "}
               <strong className="text-text-base">{getValues("email")}</strong>.
             </p>
+            {signupWarning && (
+              <p role="status" className="mb-6 rounded-lg border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+                {signupWarning}
+              </p>
+            )}
             <button
               className="text-accent text-sm bg-transparent border-none cursor-pointer font-[inherit]"
               onClick={() => setSuccess(false)}
@@ -159,7 +192,7 @@ export default function CadastroPage() {
                 </button>
               </div>
             </div>
-            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar} />
+            <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatar} />
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">

@@ -2,42 +2,41 @@ import Link from 'next/link';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 
-const alternativaSchema = z.object({
-  key: z.string(),
-  texto: z.string(),
-});
-
-const questaoSchema = z.object({
-  id: z.string().uuid(),
-  ordem: z.number(),
-  enunciado: z.string(),
-  alternativas: z.array(alternativaSchema),
-  materia: z.string(),
-  anulada: z.boolean(),
-  resposta: z.string().nullable(),
-  resultado: z.object({
-    acertou: z.boolean(),
-    anulada: z.boolean(),
-    gabarito: z.string().nullable(),
-    justificativa: z.string().nullable(),
-    justificativa_alternativas: z.unknown().nullable(),
-  }).nullable(),
-});
-
-const sessaoSchema = z.object({
+const resultadoSchema = z.object({
   sessao_id: z.string().uuid(),
-  status: z.enum(['em_andamento', 'finalizado', 'abandonado']),
-  total_questoes: z.number(),
-  acertos: z.number(),
-  questoes: z.array(questaoSchema),
+  status: z.literal('finalizado'),
+  total_questoes: z.number().int(),
+  questoes_respondidas: z.number().int(),
+  acertos: z.number().int(),
+  pontos_total: z.number(),
+  media_pontos_por_questao: z.number().nullable(),
+  tempo_ativo_segundos: z.number().int(),
+  tempo_medio_questao_segundos: z.number(),
+  materias: z.array(z.object({
+    materia: z.string(),
+    acertos: z.number().int(),
+    total: z.number().int(),
+    percentual: z.number(),
+    tempo_medio_segundos: z.number(),
+  })),
 });
 
-function SemResultado() {
+function formatarTempo(segundos: number) {
+  const horas = Math.floor(segundos / 3600);
+  const minutos = Math.floor((segundos % 3600) / 60);
+  const segundosRestantes = segundos % 60;
+
+  return horas > 0
+    ? `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundosRestantes.toString().padStart(2, '0')}`
+    : `${minutos.toString().padStart(2, '0')}:${segundosRestantes.toString().padStart(2, '0')}`;
+}
+
+function SemResultado({ motivo }: { motivo: string }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-4 py-8">
       <div className="max-w-md rounded-xl border border-border bg-surface p-6 text-center">
         <h1 className="mb-2 font-bebas text-4xl text-text-base">Resultado indisponível</h1>
-        <p className="mb-5 text-sm text-muted">Não encontramos uma sessão válida para esta conta.</p>
+        <p role="alert" className="mb-5 text-sm text-muted">{motivo}</p>
         <Link href="/filtros" className="inline-flex rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-bg">
           Iniciar simulado
         </Link>
@@ -53,34 +52,25 @@ export default async function ResultadoPage({
 }) {
   const { sessao: sessaoId } = await searchParams;
   if (!sessaoId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessaoId)) {
-    return <SemResultado />;
+    return <SemResultado motivo="Não encontramos uma sessão válida para esta conta." />;
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc('carregar_sessao', { p_sessao_id: sessaoId });
-  const parsed = error ? null : sessaoSchema.safeParse(data);
-  if (!parsed || !parsed.success) return <SemResultado />;
+  const { data, error } = await supabase.rpc('obter_resultado', { p_sessao_id: sessaoId });
 
-  const sessao = parsed.data;
-  const respondidas = sessao.questoes.filter((questao) => questao.resultado !== null);
-  const totalAcertos = respondidas.filter((questao) => questao.resultado?.acertou).length;
-  const percentualGeral = respondidas.length === 0
-    ? 0
-    : Math.round((totalAcertos / respondidas.length) * 100);
-  const desempenhoPorMateria = new Map<string, { acertos: number; total: number }>();
-
-  for (const questao of respondidas) {
-    const desempenho = desempenhoPorMateria.get(questao.materia) ?? { acertos: 0, total: 0 };
-    desempenho.total += 1;
-    if (questao.resultado?.acertou) desempenho.acertos += 1;
-    desempenhoPorMateria.set(questao.materia, desempenho);
+  if (error) {
+    return <SemResultado motivo="Finalize todas as questões para consultar o resultado desta sessão." />;
   }
 
-  const materias = Array.from(desempenhoPorMateria, ([nome, desempenho]) => ({
-    nome,
-    ...desempenho,
-    percentual: Math.round((desempenho.acertos / desempenho.total) * 100),
-  })).sort((a, b) => a.percentual - b.percentual);
+  const parsed = resultadoSchema.safeParse(data);
+  if (!parsed.success) {
+    return <SemResultado motivo="O formato do resultado não é válido. Tente novamente mais tarde." />;
+  }
+
+  const resultado = parsed.data;
+  const percentualGeral = resultado.questoes_respondidas === 0
+    ? 0
+    : Math.round((resultado.acertos / resultado.questoes_respondidas) * 100);
 
   return (
     <main className="min-h-screen bg-bg px-4 py-8 md:px-8 lg:px-10">
@@ -95,21 +85,30 @@ export default async function ResultadoPage({
           </Link>
         </header>
 
-        <section className="mb-8 grid gap-4 md:grid-cols-3">
+        <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Pontos</p>
+            <p className="mt-3 text-3xl font-bold text-accent">{resultado.pontos_total.toLocaleString('pt-BR')}</p>
+            <p className="mt-1 text-sm text-muted">Pontuação desta sessão</p>
+          </div>
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Acertos</p>
-            <p className="mt-3 text-3xl font-bold text-text-base">{totalAcertos}/{respondidas.length}</p>
-            <p className="mt-1 text-sm text-muted">Questões respondidas</p>
+            <p className="mt-3 text-3xl font-bold text-text-base">{resultado.acertos}/{resultado.questoes_respondidas}</p>
+            <p className="mt-1 text-sm text-muted">{percentualGeral}% de acerto</p>
           </div>
           <div className="rounded-xl border border-border bg-surface p-5">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Taxa de acerto</p>
-            <p className="mt-3 text-3xl font-bold text-accent">{percentualGeral}%</p>
-            <p className="mt-1 text-sm text-muted">Desempenho nesta sessão</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Média por questão</p>
+            <p className="mt-3 text-3xl font-bold text-text-base">
+              {resultado.media_pontos_por_questao?.toLocaleString('pt-BR') ?? '—'}
+            </p>
+            <p className="mt-1 text-sm text-muted">Pontos por questão selecionada</p>
           </div>
           <div className="rounded-xl border border-border bg-surface p-5">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Questões</p>
-            <p className="mt-3 text-3xl font-bold text-text-base">{sessao.total_questoes}</p>
-            <p className="mt-1 text-sm text-muted">Selecionadas para esta sessão</p>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Tempo ativo</p>
+            <p className="mt-3 font-mono text-3xl font-bold tabular-nums text-text-base">
+              {formatarTempo(resultado.tempo_ativo_segundos)}
+            </p>
+            <p className="mt-1 text-sm text-muted">Tempo acumulado de estudo</p>
           </div>
         </section>
 
@@ -118,22 +117,24 @@ export default async function ResultadoPage({
             <h2 className="text-xl font-semibold text-text-base">Desempenho por matéria</h2>
             <p className="text-sm text-muted">Da matéria com menor percentual para a maior.</p>
           </div>
-          {materias.length === 0 ? (
+          {resultado.materias.length === 0 ? (
             <p className="text-sm text-muted">Ainda não há respostas registradas nesta sessão.</p>
           ) : (
             <div className="space-y-4">
-              {materias.map((materia) => (
-                <div key={materia.nome} className="rounded-lg border border-border bg-bg/40 p-4">
+              {resultado.materias.map((materia) => (
+                <div key={materia.materia} className="rounded-lg border border-border bg-bg/40 p-4">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className="font-medium text-text-base">{materia.nome}</span>
-                    <span className="text-sm text-muted">{materia.acertos}/{materia.total}</span>
+                    <span className="font-medium text-text-base">{materia.materia}</span>
+                    <span className="text-sm text-muted">{materia.acertos}/{materia.total} · {materia.percentual}%</span>
                   </div>
                   <div className="h-2.5 overflow-hidden rounded-full bg-bg">
                     <div className={`h-full rounded-full ${
                       materia.percentual >= 80 ? 'bg-green' : materia.percentual >= 60 ? 'bg-accent' : 'bg-red-500'
                     }`} style={{ width: `${materia.percentual}%` }} />
                   </div>
-                  <div className="mt-2 text-right text-sm font-medium text-muted">{materia.percentual}%</div>
+                  <p className="mt-2 text-right text-xs text-muted">
+                    Tempo médio por questão: {materia.tempo_medio_segundos.toLocaleString('pt-BR')} s
+                  </p>
                 </div>
               ))}
             </div>
@@ -143,6 +144,9 @@ export default async function ResultadoPage({
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
           <Link href="/filtros" className="inline-flex items-center justify-center rounded-lg border border-border px-5 py-3 text-sm font-medium text-text-base transition-colors hover:border-muted">
             Fazer outro simulado
+          </Link>
+          <Link href="/ranking" className="inline-flex items-center justify-center rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-bg transition-colors hover:bg-accent2">
+            Ver ranking
           </Link>
         </div>
       </div>

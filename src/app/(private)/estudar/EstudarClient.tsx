@@ -1,17 +1,114 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/components/ui/button';
-import { useResponderQuestao, useSessaoQuiz } from '@/hooks/use-quiz';
+import {
+  useFinalizarSessao,
+  useRegistrarTempoAtivo,
+  useResponderQuestao,
+  useSessaoQuiz,
+} from '@/hooks/use-quiz';
+
+function formatarTempo(segundos: number) {
+  const horas = Math.floor(segundos / 3600);
+  const minutos = Math.floor((segundos % 3600) / 60);
+  const segundosRestantes = segundos % 60;
+
+  return horas > 0
+    ? `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundosRestantes.toString().padStart(2, '0')}`
+    : `${minutos.toString().padStart(2, '0')}:${segundosRestantes.toString().padStart(2, '0')}`;
+}
 
 export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
   const router = useRouter();
   const { data: sessao, isPending, error } = useSessaoQuiz(sessaoId);
   const responder = useResponderQuestao(sessaoId);
+  const registrarTempo = useRegistrarTempoAtivo(sessaoId);
+  const registrarTempoAtivo = registrarTempo.mutateAsync;
+  const finalizarSessao = useFinalizarSessao(sessaoId);
+  const statusSessao = sessao?.status;
   const [indiceAtual, setIndiceAtual] = useState(0);
   const [respostaSelecionada, setRespostaSelecionada] = useState<string | null>(null);
+  const [tempoAtivoSegundos, setTempoAtivoSegundos] = useState(0);
+  const [erroTempo, setErroTempo] = useState<string | null>(null);
+  const tempoAtivoRef = useRef(0);
+  const persistirTempoRef = useRef<() => Promise<void>>(async () => undefined);
+
+  useEffect(() => {
+    if (!sessao) return;
+
+    tempoAtivoRef.current = Math.max(tempoAtivoRef.current, sessao.tempo_ativo_segundos);
+    setTempoAtivoSegundos(tempoAtivoRef.current);
+  }, [sessao?.tempo_ativo_segundos, sessao]);
+
+  useEffect(() => {
+    if (statusSessao !== 'em_andamento') return;
+
+    let acumuladoMs = tempoAtivoRef.current * 1000;
+    let iniciouEm = document.visibilityState === 'visible' ? Date.now() : null;
+    let ultimaPersistencia = Date.now();
+
+    const segundosAtuais = () => Math.floor(
+      (acumuladoMs + (iniciouEm === null ? 0 : Date.now() - iniciouEm)) / 1000,
+    );
+
+    const persistir = async () => {
+      if (iniciouEm !== null) {
+        acumuladoMs += Date.now() - iniciouEm;
+        iniciouEm = Date.now();
+      }
+
+      const total = Math.floor(acumuladoMs / 1000);
+      tempoAtivoRef.current = Math.max(tempoAtivoRef.current, total);
+      setTempoAtivoSegundos(tempoAtivoRef.current);
+
+      try {
+        await registrarTempoAtivo(tempoAtivoRef.current);
+        setErroTempo(null);
+      } catch {
+        setErroTempo('Não foi possível salvar o tempo de estudo. Ele continuará contando neste dispositivo.');
+      }
+    };
+
+    persistirTempoRef.current = persistir;
+
+    const atualizarVisibilidade = () => {
+      if (document.visibilityState === 'hidden') {
+        void persistir();
+        iniciouEm = null;
+      } else if (iniciouEm === null) {
+        iniciouEm = Date.now();
+      }
+    };
+
+    const pausarAoSair = () => {
+      void persistir();
+      iniciouEm = null;
+    };
+
+    const intervalId = window.setInterval(() => {
+      const agora = Date.now();
+      const total = segundosAtuais();
+      tempoAtivoRef.current = Math.max(tempoAtivoRef.current, total);
+      setTempoAtivoSegundos(tempoAtivoRef.current);
+      if (agora - ultimaPersistencia >= 15000) {
+        ultimaPersistencia = agora;
+        void persistir();
+      }
+    }, 1000);
+
+    document.addEventListener('visibilitychange', atualizarVisibilidade);
+    window.addEventListener('pagehide', pausarAoSair);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', atualizarVisibilidade);
+      window.removeEventListener('pagehide', pausarAoSair);
+      persistirTempoRef.current = async () => undefined;
+    };
+  }, [sessaoId, statusSessao, registrarTempoAtivo]);
 
   if (isPending) {
     return (
@@ -69,16 +166,23 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
       await responder.mutateAsync({
         questaoId: questao.id,
         resposta: alternativaSelecionada,
+        tempoAtivoSegundos: tempoAtivoRef.current,
       });
     } catch {
       return;
     }
   };
 
-  const proximaQuestao = () => {
+  const proximaQuestao = async () => {
     if (!respostaAtual) return;
 
     if (indiceAtual === totalQuestoes - 1) {
+      try {
+        await persistirTempoRef.current();
+        await finalizarSessao.mutateAsync();
+      } catch {
+        return;
+      }
       router.push(`/resultado?sessao=${encodeURIComponent(sessaoId)}`);
       return;
     }
@@ -102,6 +206,22 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
             Sair do simulado
           </Link>
         </header>
+
+        <section className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-border bg-surface px-4 py-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Tempo de estudo</p>
+            <p aria-live="off" className="mt-1 font-mono text-2xl font-semibold tabular-nums text-text-base">
+              {formatarTempo(tempoAtivoSegundos)}
+            </p>
+          </div>
+          <span className="text-xs text-muted">Contagem acumulada da sessão</span>
+        </section>
+
+        {erroTempo && (
+          <p role="status" className="mb-4 rounded-lg border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+            {erroTempo}
+          </p>
+        )}
 
         <section className="mb-6 overflow-hidden rounded-xl border border-border bg-surface p-4 md:p-6">
           <div className="mb-3 flex items-center justify-between text-xs uppercase tracking-[0.18em] text-muted">
@@ -185,6 +305,11 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
           {responder.error && (
             <p role="alert" className="mt-4 text-sm text-red-400">Não foi possível registrar a resposta. Tente novamente.</p>
           )}
+          {finalizarSessao.error && (
+            <p role="alert" className="mt-4 text-sm text-red-400">
+              Não foi possível finalizar a sessão: {finalizarSessao.error.message}
+            </p>
+          )}
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-muted">
@@ -200,8 +325,15 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
                 Confirmar resposta
               </Button>
             ) : (
-              <Button type="button" onClick={proximaQuestao} className="bg-accent text-bg hover:bg-accent2">
-                {indiceAtual === totalQuestoes - 1 ? 'Ver resultado' : 'Próxima questão'}
+              <Button
+                type="button"
+                onClick={() => void proximaQuestao()}
+                disabled={finalizarSessao.isPending}
+                className="bg-accent text-bg hover:bg-accent2 disabled:opacity-60"
+              >
+                {indiceAtual === totalQuestoes - 1
+                  ? finalizarSessao.isPending ? 'Finalizando…' : 'Ver resultado'
+                  : 'Próxima questão'}
               </Button>
             )}
           </div>

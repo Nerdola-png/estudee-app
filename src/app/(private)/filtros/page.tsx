@@ -14,8 +14,6 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 
-const opcoesQuantidade = ['10', '20', '30', '40'];
-
 export default function FiltrosPage() {
   const router = useRouter();
   const { data: opcoes, error: erroOpcoes, isPending: carregandoOpcoes, refetch } = useOpcoesSimulado();
@@ -32,6 +30,9 @@ export default function FiltrosPage() {
     .map((id) => opcoes?.materias.find((item) => String(item.id) === id)?.nome)
     .filter((nome): nome is string => Boolean(nome))
     .join(', ') || 'Todas';
+  const tamanhosDisponiveis = opcoes?.tamanhosPermitidos ?? [];
+  const tamanhosPremium = opcoes?.tamanhosPremium ?? [];
+  const temTamanhoPremiumBloqueado = tamanhosPremium.some((item) => !tamanhosDisponiveis.includes(item));
   const resumo = `${bancaSelecionada} • ${materiaSelecionada} • ${quantidade} questões`;
 
   const handleSubmit = async () => {
@@ -108,13 +109,25 @@ export default function FiltrosPage() {
                     <SelectValue placeholder="Quantidade" />
                   </SelectTrigger>
                   <SelectContent>
-                    {opcoesQuantidade.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item} questões
+                    {tamanhosPremium.map((item) => {
+                      const disponivel = tamanhosDisponiveis.includes(item);
+
+                      return (
+                      <SelectItem key={item} value={String(item)} disabled={!disponivel}>
+                        {item} questões{disponivel ? '' : ' · Premium'}
                       </SelectItem>
-                    ))}
+                      );
+                    })}
                   </SelectContent>
                 </Select>
+                {temTamanhoPremiumBloqueado && (
+                  <p className="text-xs text-muted">
+                    Simulados de 50 a 100 questões são Premium.{' '}
+                    <Link href="/checkout/premium" className="font-medium text-accent underline">
+                      Conheça o plano
+                    </Link>
+                  </p>
+                )}
               </div>
 
             </div>

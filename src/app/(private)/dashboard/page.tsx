@@ -1,246 +1,198 @@
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { StatCard } from "@/app/components/StatCard";
-import { LogoutButton } from "@/app/components/LogoutButton";
-import { Logo } from "@/app/components/Logo";
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import { LogoutButton } from '@/app/components/LogoutButton';
+import { Logo } from '@/app/components/Logo';
+import { StatCard } from '@/app/components/StatCard';
+import { estatisticasSchema } from '@/schema/estatisticas';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-  if (!profile) redirect("/login");
+  const [perfilResult, planoResult, estatisticasResult, sessaoEmAndamentoResult] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id,nome,sobrenome,cidade,estado,concurso_alvo,avatar_url,nickname,uf,municipio_ibge')
+      .eq('id', user.id)
+      .single(),
+    supabase.rpc('plano_atual_usuario'),
+    supabase.rpc('obter_estatisticas'),
+    supabase.rpc('obter_sessao_em_andamento'),
+  ]);
 
-  const primeiroNome = profile.nome.split(" ")[0];
-  const iniciais = `${profile.nome[0]}${profile.sobrenome[0]}`.toUpperCase();
-  const isPremium = profile.plano === "premium";
-  const hoje = new Date().toISOString().slice(0, 10);
-  const streakAtiva = profile.streak_ultima_data === hoje;
+  if (perfilResult.error || planoResult.error || estatisticasResult.error || sessaoEmAndamentoResult.error) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-bg px-4 py-8">
+        <div className="max-w-lg rounded-2xl border border-red-500/30 bg-surface p-6">
+          <h1 className="font-bebas text-4xl text-text-base">Não foi possível carregar o painel</h1>
+          <p role="alert" className="mt-2 text-sm text-muted">
+            Atualize a página. Seus simulados e respostas continuam salvos.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  const parsedStats = estatisticasSchema.safeParse(estatisticasResult.data);
+  if (!parsedStats.success) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-bg px-4 py-8">
+        <div className="max-w-lg rounded-2xl border border-red-500/30 bg-surface p-6">
+          <h1 className="font-bebas text-4xl text-text-base">Painel temporariamente indisponível</h1>
+          <p role="alert" className="mt-2 text-sm text-muted">Não foi possível validar os dados das estatísticas.</p>
+        </div>
+      </main>
+    );
+  }
+
+  const profile = perfilResult.data;
+  const stats = parsedStats.data;
+  const isPremium = planoResult.data === 'premium';
+  const primeiroNome = profile.nome.split(' ')[0];
+  const iniciais = `${profile.nome[0] ?? ''}${profile.sobrenome[0] ?? ''}`.toUpperCase();
 
   return (
     <div className="grid min-h-screen grid-cols-1 bg-bg font-sans md:grid-cols-[240px_minmax(0,1fr)]">
-      {/* ── Sidebar ── */}
       <aside className="flex flex-col border-b border-border bg-surface px-4 py-4 md:sticky md:top-0 md:h-screen md:overflow-y-auto md:border-b-0 md:border-r md:py-7">
-        <Link href="/" className="block px-2 mb-9">
+        <Link href="/" className="mb-9 block px-2">
           <Logo size="md" />
         </Link>
 
         <nav className="flex flex-1 flex-row gap-0.5 overflow-x-auto md:flex-col">
           {[
-            { href: "/dashboard", icon: "⊞", label: "Início", active: true },
-            { href: "/filtros", icon: "🎯", label: "Novo Simulado" },
-            { href: "/estudar", icon: "📚", label: "Estudar" },
-          ].map(({ href, icon, label, active }) => (
+            { href: '/dashboard', icon: '⊞', label: 'Início' },
+            { href: '/filtros', icon: '🎯', label: 'Novo simulado' },
+            { href: '/estatisticas', icon: '📊', label: 'Estatísticas' },
+            { href: '/ranking', icon: '🏆', label: 'Ranking' },
+          ].map(({ href, icon, label }) => (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium no-underline transition-all ${
-                active
-                  ? "bg-accent/10 text-accent"
-                  : "text-muted hover:bg-surface2 hover:text-text-base"
-              }`}
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-muted no-underline transition-all hover:bg-surface2 hover:text-text-base"
             >
-              <span className="text-base w-5 text-center">{icon}</span>
+              <span className="w-5 text-center text-base">{icon}</span>
               {label}
+              {label === 'Ranking' && !isPremium && <span className="ml-auto text-[11px] opacity-60">🔒</span>}
             </Link>
           ))}
-          <Link
-            href="/ranking"
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-muted no-underline transition-all hover:bg-surface2 hover:text-text-base"
-          >
-            <span className="text-base w-5 text-center">🏆</span>
-            Ranking
-            {!isPremium && <span className="ml-auto text-[11px] opacity-60">🔒</span>}
-          </Link>
         </nav>
 
-        <div className="mt-4 flex flex-row items-center gap-3 border-t border-border pt-4 md:flex-col md:items-stretch">
-          {!isPremium && (
-            <Link
-              href="/checkout/premium"
-              className="flex items-center gap-2.5 bg-accent/8 border border-accent/20 rounded-xl p-3 no-underline hover:bg-accent/14 transition-colors"
-            >
-              <span className="text-xl">⚡</span>
-              <div>
-                <div className="text-[13px] font-semibold text-accent">Ir para Premium</div>
-                <div className="text-[11px] text-muted mt-px">Ranking + Estatísticas</div>
-              </div>
-            </Link>
-          )}
-          <Link
-            href="/perfil"
-            className="flex items-center gap-2.5 px-2 py-2.5 rounded-lg no-underline hover:bg-surface2 transition-colors"
-          >
-            <div className="w-9 h-9 rounded-full bg-accent/15 border border-accent/30 flex items-center justify-center text-[13px] font-bold text-accent flex-shrink-0">
-              {iniciais}
-            </div>
-            <div className="overflow-hidden">
-              <div className="text-[13px] font-semibold text-text-base truncate">
-                {profile.nome} {profile.sobrenome}
-              </div>
-              <div className="text-[11px] text-muted mt-px">
-                {isPremium ? "⭐ Premium" : "Gratuito"}
-              </div>
-            </div>
+        {!isPremium && (
+          <Link href="/checkout/premium" className="mt-4 flex items-center gap-2.5 rounded-xl border border-accent/20 bg-accent/8 p-3 no-underline transition-colors hover:bg-accent/14">
+            <span className="text-xl">⚡</span>
+            <span>
+              <span className="block text-[13px] font-semibold text-accent">Conhecer Premium</span>
+              <span className="mt-px block text-[11px] text-muted">Simulados maiores e ranking</span>
+            </span>
           </Link>
+        )}
+
+        <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
+          <Link href="/perfil" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2.5 no-underline hover:bg-surface2">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-accent/30 bg-accent/15 text-[13px] font-bold text-accent">
+              {iniciais || 'U'}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[13px] font-semibold text-text-base">{profile.nome} {profile.sobrenome}</span>
+              <span className="mt-px block text-[11px] text-muted">{isPremium ? 'Premium' : 'Gratuito'}</span>
+            </span>
+          </Link>
+          <LogoutButton />
         </div>
       </aside>
 
-      {/* ── Main ── */}
       <main className="flex min-w-0 flex-col gap-6 overflow-y-auto p-4 sm:p-6 lg:gap-8 lg:p-9">
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <div className="font-bebas text-3xl tracking-wide text-text-base">
-              {saudacao()}, {primeiroNome} 👋
-            </div>
-            <div className="text-sm text-muted mt-0.5">
-              {profile.concurso_alvo ? `Foco: ${profile.concurso_alvo}` : "Continue de onde parou"}
-            </div>
-          </div>
-          <LogoutButton />
+        <header>
+          <p className="font-bebas text-3xl tracking-wide text-text-base">
+            {saudacao()}, {primeiroNome}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            {profile.concurso_alvo ? `Seu foco: ${profile.concurso_alvo}` : 'Um simulado de cada vez.'}
+          </p>
         </header>
 
-        {/* Stats */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Pontuação total"
-            value={profile.pontuacao.toLocaleString("pt-BR")}
-            hint="+10 pts por acerto"
-            accentValue
-          />
-          <StatCard
-            label="Sequência"
-            value={
-              <span className="flex items-baseline gap-1.5">
-                <span className="text-3xl">🔥</span>
-                <span className={streakAtiva ? "text-accent" : ""}>
-                  {profile.streak_dias} {profile.streak_dias === 1 ? "dia" : "dias"}
-                </span>
-              </span>
-            }
-            hint={streakAtiva ? "Você estudou hoje!" : "Estude hoje para não perder!"}
-          />
-          <StatCard
-            label="Plano atual"
-            value={<span className="text-xl mt-1">{isPremium ? "⭐ Premium" : "🆓 Gratuito"}</span>}
-            hint={
-              isPremium ? (
-                "Acesso completo à plataforma"
-              ) : (
-                <Link href="/checkout/premium" className="text-accent no-underline">
-                  Fazer upgrade →
-                </Link>
-              )
-            }
-          />
-          <StatCard
-            label="Localização"
-            value={<span className="text-xl mt-1.5">{profile.cidade}</span>}
-            hint={`${profile.estado} · Ranking local disponível`}
-          />
+          <StatCard label="Pontos acumulados" value={stats.resumo.pontos_total.toLocaleString('pt-BR')} hint="Somente simulados finalizados" accentValue />
+          <StatCard label="Taxa de acerto" value={`${stats.resumo.percentual}%`} hint={`${stats.resumo.acertos} acertos no histórico`} />
+          <StatCard label="Questões respondidas" value={stats.resumo.questoes.toLocaleString('pt-BR')} hint={`${stats.resumo.sessoes} simulados finalizados`} />
+          <StatCard label="Plano atual" value={<span className="mt-1 text-xl">{isPremium ? 'Premium' : 'Gratuito'}</span>} hint={isPremium ? 'Ranking completo disponível' : 'Ranking completo é Premium'} />
         </section>
 
-        {/* CTA */}
-        <section>
-          <div className="relative grid grid-cols-1 items-center gap-8 overflow-hidden rounded-2xl border border-border bg-surface p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-10">
-            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-accent/4" />
-            <div>
-              <div className="inline-flex items-center gap-1.5 bg-accent/10 border border-accent/25 text-accent px-3 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase mb-3.5">
-                🎯 Pronto para estudar?
-              </div>
-              <h2 className="font-bebas text-4xl tracking-wide text-text-base mb-2.5">
-                COMECE UM SIMULADO AGORA
-              </h2>
-              <p className="text-sm text-muted leading-relaxed mb-5 max-w-[380px]">
-                Escolha a banca, matéria e quantidade de questões. O sistema evita repetir o que você já acertou.
-              </p>
-              <div className="flex gap-3 flex-wrap">
-                <Link href="/filtros" className="bg-accent text-bg px-6 py-3 rounded-lg font-bold text-sm no-underline hover:bg-accent2 transition-colors">
-                  Montar simulado →
-                </Link>
-                <Link href="/estudar" className="bg-transparent text-text-base px-6 py-3 rounded-lg font-semibold text-sm border border-border no-underline hover:border-muted transition-colors">
-                  Continuar estudo
-                </Link>
-              </div>
-            </div>
-            <div className="bg-surface2 border border-border rounded-xl px-5 py-4 min-w-[220px] flex flex-col gap-2.5">
-              {[
-                { dot: "bg-green", text: "Polícia Civil — Direito Penal" },
-                { dot: "bg-accent", text: "CESPE · 20 questões · 30 min" },
-                { dot: "bg-border", text: "Último: 14/20 acertos · +140 pts" },
-              ].map(({ dot, text }) => (
-                <div key={text} className="flex items-center gap-2 text-xs text-muted">
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
-                  {text}
-                </div>
-              ))}
-              <div className="h-1 bg-border rounded-full mt-1">
-                <div className="h-full bg-accent rounded-full w-[70%]" />
-              </div>
-            </div>
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="rounded-2xl border border-border bg-surface p-5 sm:p-7">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-accent">Próximo passo</p>
+            <h2 className="font-bebas text-4xl tracking-wide text-text-base">
+              {sessaoEmAndamentoResult.data ? 'CONTINUE SEU SIMULADO' : 'COMECE UM SIMULADO'}
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+              {sessaoEmAndamentoResult.data
+                ? 'Seu progresso está salvo. Retome de onde parou.'
+                : 'Escolha a banca e as matérias. Ao final, veja sua pontuação e onde vale a pena reforçar os estudos.'}
+            </p>
+            <Link
+              href={sessaoEmAndamentoResult.data
+                ? `/estudar?sessao=${encodeURIComponent(sessaoEmAndamentoResult.data)}`
+                : '/filtros'}
+              className="mt-5 inline-flex rounded-lg bg-accent px-6 py-3 text-sm font-bold text-bg no-underline transition-colors hover:bg-accent2"
+            >
+              {sessaoEmAndamentoResult.data ? 'Retomar simulado' : 'Montar simulado'}
+            </Link>
           </div>
-        </section>
 
-        {/* Histórico */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bebas text-2xl tracking-wide text-text-base">Simulados recentes</h3>
-            <Link href="/estudar" className="text-sm text-accent no-underline font-medium">Ver todos →</Link>
-          </div>
-          <div className="bg-surface border border-border rounded-xl py-12 px-6 text-center">
-            <div className="text-4xl mb-3">📋</div>
-            <div className="text-base font-semibold text-text-base mb-1.5">Nenhum simulado ainda</div>
-            <div className="text-sm text-muted mb-5">
-              Seu histórico vai aparecer aqui depois do primeiro simulado.
-            </div>
-            <Link href="/filtros" className="bg-accent text-bg px-5 py-2.5 rounded-lg font-bold text-sm no-underline hover:bg-accent2 transition-colors inline-block">
-              Fazer meu primeiro simulado →
+          <div className="rounded-2xl border border-border bg-surface p-5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Localização do perfil</p>
+            <p className="mt-3 text-xl font-semibold text-text-base">{profile.cidade || 'Cidade não informada'}</p>
+            <p className="mt-1 text-sm text-muted">{profile.uf ?? profile.estado ?? 'UF não informada'}</p>
+            <Link href="/perfil" className="mt-4 inline-flex text-sm font-medium text-accent underline">
+              Atualizar perfil
             </Link>
           </div>
         </section>
 
-        {/* Ranking bloqueado */}
-        {!isPremium && (
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bebas text-2xl tracking-wide text-text-base">
-                Ranking — {profile.cidade}
-              </h3>
-              <span className="text-[11px] font-bold text-muted bg-surface border border-border px-2.5 py-0.5 rounded-full">
-                🔒 Premium
-              </span>
+        <section className="rounded-2xl border border-border bg-surface p-5 sm:p-7">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-bebas text-2xl tracking-wide text-text-base">Simulados recentes</h2>
+            <Link href="/estatisticas" className="text-sm font-medium text-accent no-underline">Ver estatísticas</Link>
+          </div>
+          {stats.sessoes_recentes.length === 0 ? (
+            <div className="py-8 text-center">
+              <p className="font-medium text-text-base">Nenhum simulado finalizado ainda</p>
+              <p className="mt-1 text-sm text-muted">Seu histórico aparece aqui depois do primeiro resultado.</p>
             </div>
-            <div className="relative bg-surface border border-border rounded-xl overflow-hidden">
-              <div className="py-2 blur-sm pointer-events-none select-none">
-                {["Ana O.", "Rafael S.", "Carla M."].map((nome, i) => (
-                  <div key={nome} className="flex items-center gap-3 px-5 py-3 border-b border-border last:border-0">
-                    <span className="font-bebas text-lg text-muted w-5">{i + 1}</span>
-                    <div className="w-8 h-8 rounded-full bg-surface2 flex items-center justify-center text-xs font-semibold text-text-base">
-                      {nome.split(" ").map((p) => p[0]).join("")}
-                    </div>
-                    <span className="flex-1 text-sm font-medium text-text-base">{nome}</span>
-                    <span className="font-bebas text-base text-accent">
-                      {(4280 - i * 330).toLocaleString("pt-BR")} pts
-                    </span>
+          ) : (
+            <ul className="divide-y divide-border">
+              {stats.sessoes_recentes.map((sessao) => (
+                <li key={sessao.sessao_id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div>
+                    <p className="font-medium text-text-base">
+                      {sessao.acertos}/{sessao.total_questoes} acertos · {sessao.pontos.toLocaleString('pt-BR')} pontos
+                    </p>
+                    <p className="text-xs text-muted">
+                      {sessao.finalizada_em
+                        ? new Date(sessao.finalizada_em).toLocaleDateString('pt-BR')
+                        : 'Data não disponível'}
+                    </p>
                   </div>
-                ))}
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center bg-bg/60 backdrop-blur-sm">
-                <div className="text-center text-text-base text-sm">
-                  <div className="text-3xl mb-2.5">🏆</div>
-                  <div className="font-semibold mb-1.5">Ranking disponível no Premium</div>
-                  <Link href="/checkout/premium" className="bg-accent text-bg px-5 py-2.5 rounded-lg font-bold text-[13px] no-underline hover:bg-accent2 transition-colors inline-block">
-                    Desbloquear →
+                  <Link href={`/resultado?sessao=${encodeURIComponent(sessao.sessao_id)}`} className="text-sm font-medium text-accent underline">
+                    Ver resultado
                   </Link>
-                </div>
-              </div>
-            </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {!isPremium && (
+          <section className="rounded-2xl border border-accent/30 bg-accent/5 p-5 sm:p-7">
+            <h2 className="text-xl font-semibold text-text-base">Acompanhe o ranking completo</h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Seus acertos inéditos já acumulam pontos. O plano Premium libera a lista nacional, estadual e municipal.
+            </p>
+            <Link href="/checkout/premium" className="mt-4 inline-flex text-sm font-semibold text-accent underline">
+              Conhecer o plano Premium
+            </Link>
           </section>
         )}
       </main>
@@ -249,8 +201,8 @@ export default async function DashboardPage() {
 }
 
 function saudacao() {
-  const h = new Date().getHours();
-  if (h < 12) return "Bom dia";
-  if (h < 18) return "Boa tarde";
-  return "Boa noite";
+  const hora = new Date().getHours();
+  if (hora < 12) return 'Bom dia';
+  if (hora < 18) return 'Boa tarde';
+  return 'Boa noite';
 }

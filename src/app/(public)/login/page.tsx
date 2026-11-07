@@ -54,6 +54,8 @@ function LoginContent() {
   const [showSenha, setShowSenha] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [sendingMagicLink, setSendingMagicLink] = useState(false);
 
   const loginForm = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -98,6 +100,42 @@ function LoginContent() {
     }
 
     setResetSent(true);
+  };
+
+  const onMagicLink = async () => {
+    const emailValido = await loginForm.trigger("email");
+    if (!emailValido) return;
+
+    setMagicLinkSent(false);
+    loginForm.clearErrors("root");
+    setSendingMagicLink(true);
+
+    try {
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      callbackUrl.searchParams.set("next", redirect);
+      const { error } = await supabase.auth.signInWithOtp({
+        email: loginForm.getValues("email"),
+        options: {
+          emailRedirectTo: callbackUrl.toString(),
+          shouldCreateUser: false,
+        },
+      });
+
+      if (error) {
+        loginForm.setError("root", {
+          message: "Não foi possível enviar o link de acesso. Confira o e-mail e tente novamente.",
+        });
+        return;
+      }
+
+      setMagicLinkSent(true);
+    } catch {
+      loginForm.setError("root", {
+        message: "Não foi possível enviar o link de acesso. Confira o e-mail e tente novamente.",
+      });
+    } finally {
+      setSendingMagicLink(false);
+    }
   };
 
   // ── Reset enviado ────────────────────────────────────────────────────────
@@ -179,7 +217,7 @@ function LoginContent() {
           {/* Header */}
           <div className="mb-9">
             <div className="inline-flex items-center gap-2 bg-accent/10 border border-accent/25 text-accent px-3 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase mb-4">
-              🔥 Sequência te esperando
+              Seu próximo estudo está a um clique
             </div>
             <h1 className="font-bebas text-4xl tracking-widest mb-2">BEM-VINDO DE VOLTA</h1>
             <p className="text-muted text-sm">
@@ -200,6 +238,11 @@ function LoginContent() {
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-3.5 py-3 text-[13px] text-red-400">
                 {loginForm.formState.errors.root.message}
               </div>
+            )}
+            {magicLinkSent && (
+              <p role="status" className="rounded-lg border border-accent/30 bg-accent/10 px-3.5 py-3 text-[13px] text-accent">
+                Enviamos um link de acesso para {loginForm.getValues("email")}. Confira sua caixa de entrada.
+              </p>
             )}
 
             <Field label="E-mail" error={loginForm.formState.errors.email?.message}>
@@ -261,16 +304,39 @@ function LoginContent() {
               variant="outline"
               className="w-full border-border text-text-base bg-surface hover:border-muted"
               onClick={async () => {
-                await supabase.auth.signInWithOAuth({
-                  provider: "google",
-                  options: {
-                    redirectTo: `${window.location.origin}/auth/callback?next=${redirect}`,
-                  },
-                });
+                try {
+                  const callbackUrl = new URL("/auth/callback", window.location.origin);
+                  callbackUrl.searchParams.set("next", redirect);
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: "google",
+                    options: {
+                      redirectTo: callbackUrl.toString(),
+                    },
+                  });
+                  if (error) {
+                    loginForm.setError("root", {
+                      message: "Não foi possível iniciar o acesso com Google. Tente novamente.",
+                    });
+                  }
+                } catch {
+                  loginForm.setError("root", {
+                    message: "Não foi possível iniciar o acesso com Google. Tente novamente.",
+                  });
+                }
               }}
             >
               <GoogleIcon />
               Entrar com Google
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={sendingMagicLink}
+              onClick={onMagicLink}
+              className="w-full border-border text-text-base bg-surface hover:border-muted"
+            >
+              {sendingMagicLink ? "Enviando link…" : "Enviar link de acesso por e-mail"}
             </Button>
           </form>
         </div>
