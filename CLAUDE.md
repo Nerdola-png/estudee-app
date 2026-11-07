@@ -1,84 +1,195 @@
-CLAUDE.md — App de Questões para Concursos
+# CLAUDE.md — Estudee
 
-Fonte da verdade complementar: @supabase/migrations.
+Plataforma web de simulados gamificados para concursos públicos, com questões de provas anteriores, comentário gerado por IA, pontuação calculada no servidor e ranking.
 
-O que é
-App web mobile-first de questões comentadas para concursos públicos, começando pelo nicho Brigada Militar / PC-RS. Feito por aprovados.
-Diferencial central: o comentário curado de quem passou é o produto — não o volume de questões. Concorrentes (QConcursos, Gran, TEC) ganham em volume; aqui se ganha em curadoria + foco no nicho. Toda decisão de produto deve reforçar isso.
-Estágio: v0 (MVP de validação)
-Objetivo: colocar o loop mínimo na mão de ~20 candidatos reais, cobrando preço de fundador. É teste, não lançamento. Disciplina de escopo é regra — ver Guardrails.
-Stack
+Este arquivo é a fonte de verdade para o Claude Code. Se um pedido conflitar com ele, avise antes de implementar. Itens marcados **(em aberto)** não devem ser assumidos: pergunte.
 
-Next.js (App Router) + TypeScript (strict mode)
-Tanstack Query
-Shadcn/ui
-Supabase: Postgres + Auth (magic link / Google)
-Tailwind CSS
-Deploy: Vercel
-PWA: só na v0.5, se houver demanda
+Branch de trabalho: `Secondary` (a `main` está defasada).
 
-Modelo de dados
-Detalhe completo em @SPEC_v0_concursos.md. Três tabelas:
+## 1. Documentos e qual vale mais
 
-materias — referência (id slug + nome). Toda matéria vem daqui; nunca string solta (a estatística por matéria depende disso).
-questoes — alternativas em JSONB ([{letra, texto}]) + correta, comentario, banca, ano, orgao, materia_id, ativa.
-respostas — log append-only (user_id, questao_id, alternativa, acertou, respondido_em).
+1. `supabase/migrations/` — **fonte de verdade do schema e das regras no banco.**
+2. Este arquivo — regras de produto e de código.
+3. `docs/Relatório de mudanças pontuação, sessões, ranking e premium.md` — decisões de produto da pontuação, anti-farm, tamanhos e ranking.
+4. `docs/auditoria-projeto-2026-11-06.md` — achados de segurança e pendências.
+5. `AGENTS.md` — o Next.js deste projeto tem mudanças em relação ao que você conhece. Leia o guia relevante em `node_modules/next/dist/docs/` antes de mexer em rota, middleware ou cache.
 
-Regra: toda estatística é derivada do log respostas. Nunca guardar totais agregados em coluna.
-Regras de arquitetura (não-negociáveis)
+**Desatualizados (não seguir):** `src/docs/Estudee_Especificacao_Produto.docx` (ainda fala em "10 pontos por acerto", `respostas`, `logs_acesso`, anúncios) e o antigo `CLAUDE2.md` (texto de MVP "Brigada/PC-RS" e "curadoria de quem passou", com guardrails que contradizem ranking e pontuação).
 
-Validação de resposta no servidor. Correção e comentario saem via RPC do Postgres (responder()) só depois que o usuário responde. Nunca enviar gabarito/comentário ao client antes da resposta — é conteúdo pago.
-RLS ligado em respostas e perfis: cada usuário acessa só os próprios registros (auth.uid() = user_id).
-Service key só em scripts locais / env (seed). Nunca no client — no client, apenas a anon key.
-Data fetching em Server Components; mutações via Server Actions ou RPC.
-Feature-âncora: % de acerto por matéria, ordenado da mais fraca para a mais forte.
+## 2. Produto
 
-Convenções de código
+O usuário monta um simulado (filtros → tamanho), responde questão por questão, vê correção e comentário logo após cada resposta e, **ao finalizar**, vê seus pontos, acertos e desempenho por matéria. Os pontos alimentam o ranking.
 
-Pastas de API route em kebab-case.
-TypeScript strict; usar os tipos gerados do Supabase (supabase gen types), nunca any.
-Strings de UI e termos de domínio em PT-BR.
-Componentes pequenos e focados. Evitar abstração prematura — priorizar entregar a fatia, não generalizar.
-enunciado e comentario renderizados como markdown leve.
+Diferenciais: pontuação variável (dificuldade, tempo, sequência de acertos), ranking local/estadual/nacional e comentário explicativo em cada questão, gerado por um agente de IA.
 
-Guardrails de escopo (v0) — NÃO construir até validar
-Estes overridam qualquer pedido de feature "que seria legal":
+**Planos** (valores e limites vivem no banco, em `planos_config`, nunca no código):
 
-❌ Streak, ranking, gamificação (alavanca de retenção pós-validação, não de v0)
-❌ Múltiplas carreiras / outros concursos (foco em UM)
-❌ Anúncios
-❌ Integração de pagamento — v0 = Pix manual + setar perfis.liberado_ate no banco
-❌ Comunidade dentro do app (usar WhatsApp/Telegram que já existe)
-✅ Apenas: auth → loop de quiz (responde → feedback + comentário → próxima → placar) → % de acerto por matéria
+| | Gratuito | Premium |
+|---|---|---|
+| Tamanhos de simulado | 10, 20, 30, 40 | 10 a 40, mais 50, 60, 70, 80, 90, 100 |
+| Pontos acumulam | sim | sim |
+| Ver a lista do ranking (nacional, UF, município) | não | sim |
+| Ver a própria posição (limitada) | sim | sim |
 
-Quando em dúvida: "qual é a menor coisa que entrega o loop?"
-Pipeline de conteúdo
-Questões entram via planilha (Google Sheets) → CSV → script de seed (usa service key, monta o JSONB das alternativas). Não construir CMS na v0.
+Premium vende **recursos adicionais da plataforma**, nunca "acesso a um banco de questões exclusivo" (direitos autorais). Vale para landing, checkout e qualquer texto de UI.
 
-Questões: provas anteriores públicas (bancas liberam).
-Comentário: sempre original do time. Nunca copiar gabarito comentado de concorrente (é propriedade deles).
+**Foco de conteúdo:** concursos públicos para carreiras **jurídicas, policiais, bancárias e outras de nível médio e superior**. Não há restrição a um órgão ou estado específico.
 
-Glossário de domínio
+Lacunas do schema para esse foco: `carreiras` e `cargos` só têm `nome` e `slug` (não existe campo de **nível de escolaridade**, médio ou superior), e a tela de filtros hoje só filtra por banca e matéria. Filtros por carreira, cargo, nível, ano e estado são **fatias futuras**: propor plano e migration antes de implementar.
 
-Banca: organizadora da prova (FGV, Cebraspe, FUNDATEC...).
-Matéria: disciplina (Direito Penal, Português...).
-Órgão: instituição do concurso (Brigada Militar, PC-RS).
-Gabarito: alternativa correta.
-Comentário: explicação da questão — o diferencial do produto.
-Simulado: sessão de N questões.
+## 3. Fluxo do usuário e rotas
 
-Comandos
+`/filtros` → `/estudar?sessao=<uuid>` → `/resultado?sessao=<uuid>`
 
-npm run dev — ambiente local
-npm run build — build de produção
-supabase migration new <nome> — nova migration
-supabase db push — aplicar migrations
-supabase gen types typescript --linked > src/types/db.ts — regenerar tipos após qualquer mudança de schema
-npm run seed — popular questões a partir do CSV
+- `/estudar` **é** a tela do simulado (não existe `/simulado`; o middleware ainda lista esse prefixo).
+- Sem `?sessao=`, `/estudar` retoma a sessão em andamento (`obter_sessao_em_andamento`) ou orienta a criar uma nova.
+- Rotas privadas: `/dashboard`, `/estudar`, `/filtros`, `/resultado`, `/ranking`, `/perfil`, `/estatisticas`, `/checkout/premium`, `/auth/reset-password`.
+- Rotas públicas: `/`, `/login`, `/cadastro`, `/termos`, `/privacidade`.
 
-Fluxo de trabalho esperado
+## 4. Pontuação (versão 1)
 
-Tarefas em fatias pequenas (uma vertical por vez), não o app inteiro de uma vez.
-Mudança grande → propor plano antes de editar.
-Mudou schema → rodar gen types antes de escrever código que usa as tabelas.
-Escrever testes para o RPC de validação e para o cálculo de estatística.
+Calculada **no Postgres**, a cada resposta, pela função pura `calcular_pontos` (IMMUTABLE, sem acesso a tabelas). **Exibida ao usuário somente após `finalizar_sessao` + `obter_resultado`.**
+
+```
+pontos = base × (1 + bonus_tempo) × mult_sequencia      (só para acertos; erro vale 0, sem negativo)
+
+base           = 100 × peso_dificuldade                  (peso de 1 a 3)
+bonus_tempo    = 0,10 × max(0, 1 − t / t_ref)            (0 se t > 3 × t_ref)
+mult_sequencia = min(1 + 0,1 × (sequencia − 1), 1,5)
+```
+
+Regras:
+- `t` é medido **no servidor** (`exibida_em` → resposta). O tempo enviado pelo client é só informativo (`registrar_tempo_ativo`) e **nunca** entra na fórmula.
+- `t_ref_segundos` é por questão (vem do CSV/seed; padrão 30). Evoluir para a mediana real dos usuários é **(em aberto)**.
+- `sequencia` = acertos seguidos dentro da sessão, na ordem de resposta no servidor; zera no erro. **Não confundir com streak diário** (seção 9).
+- O cálculo ocorre uma vez, na primeira resposta; retries devolvem o resultado já gravado.
+- Cada resposta grava os componentes (`pontos_base`, `bonus_tempo`, `mult_sequencia`, `pontos`) e `formula_versao`. Mudar a fórmula = nova versão, nunca sobrescrever a antiga.
+- **Anti-farm:** só o **primeiro acerto de cada questão por usuário** pontua no ranking (`questoes_pontuadas`, PK `user_id + questao_id`).
+- Questão `anulada` conta como acerto após uma alternativa válida e exibe aviso.
+- A UI do simulado **nunca** mostra pontos, "+N pts" ou placar parcial. Mostra progresso, contador de tempo cumulativo e neutro, e correção/comentário. Evitar texto que sugira velocidade.
+
+## 5. Arquitetura e segurança (não negociável)
+
+1. **Correção no servidor.** Gabarito e comentário só saem pela RPC `responder_questao`, depois de o usuário responder. `questoes.gabarito` e `justificativa` não têm grant de leitura.
+2. **Pontos, sessões, assinaturas e ranking não são lidos direto pelo client.** Tudo passa por RPC `SECURITY DEFINER` com `set search_path = ''`, validação de `auth.uid()`, `REVOKE` de `public`/`anon` e `GRANT` explícito.
+3. **Plano vem de `plano_atual_usuario()`** (tabela `assinaturas`, status e `periodo_fim`). `profiles.plano` é legado: não ler, não editar, não autorizar nada com ele.
+4. **Ranking e limites de plano são bloqueados no banco**, não só na UI (tamanho do simulado validado em `iniciar_sessao` contra `planos_config`).
+5. **Ranking exige opt-in explícito** (`ranking_opt_in`, com nickname, UF e município preenchidos). Exibir apenas nickname e pontuação.
+6. **Service role** só em servidor ou scripts locais (`.env.local`). Nunca no browser, nunca com prefixo `NEXT_PUBLIC_`. No client, só a anon key.
+7. **Tabelas novas:** RLS ligado e grants explícitos desde a migration (`auto_expose_new_tables = false` já está no `config.toml`).
+8. **Premium é Pix manual, fora do app.** A equipe confirma o pagamento e ativa com `npm run pix:ativar -- <user_id> <dias> <operador_id>` (RPC `registrar_assinatura_pix_manual`, só `service_role`). O client nunca ativa Premium nem informa comprovante, valor ou status.
+9. **Não integrar** Stripe, checkout automático ou webhook nesta fase. Antes de cobrar, definir e publicar: chave Pix, valor, prazo, cancelamento, reembolso e canal de atendimento **(em aberto)**.
+10. Data fetching em Server Components quando fizer sentido; mutações via RPC ou Server Actions; hooks do TanStack Query em `src/hooks/`.
+
+## 6. Modelo de dados (resumo; detalhes nas migrations)
+
+- Referência: `materias`, `bancas`, `cargos`, `carreiras`, `textos_base`.
+- `questoes`: alternativas em JSONB (`key` A–E + `texto`), `gabarito`, `justificativa`, `ativo`, `status_gabarito`, `peso_dificuldade` (1–3), `t_ref_segundos`.
+- `sessoes` e `sessao_questoes`: sessões e respostas **append-only** com tempo, sequência e componentes de pontos. Estatísticas derivam só de sessões **finalizadas**.
+- `profiles`: dados de conta, `nickname` (único), `ranking_opt_in`, `uf`, `municipio_ibge` (código IBGE de 7 dígitos), avatar.
+- `planos_config`, `assinaturas`: plano e tamanhos permitidos.
+- `questoes_pontuadas`: controle anti-farm.
+- `ranking_pontos`: agregados por usuário e período (`geral`, `semanal`, `mensal`), atualizados na finalização.
+- Storage: bucket `avatars`, 2 MB, JPEG/PNG/WebP, policies restritas ao próprio `auth.uid()`.
+
+RPCs principais: `iniciar_sessao`, `carregar_sessao`, `responder_questao`, `registrar_tempo_ativo`, `finalizar_sessao`, `obter_resultado`, `obter_sessao_em_andamento`, `obter_estatisticas`, `obter_minha_posicao`, `obter_ranking`, `plano_atual_usuario`.
+
+Regra: nunca guardar total agregado fora de `ranking_pontos`; estatísticas derivam do histórico de sessões.
+
+## 7. Estado atual (atualize ao concluir cada fatia)
+
+**Pronto:** login, cadastro (com avatar), recuperação e redefinição de senha, filtros com seleção múltipla de bancas e matérias, tamanhos por plano, simulado com retomada e contador de tempo ativo, resultado, dashboard com dados reais, estatísticas por matéria, perfil (nickname, opt-in, UF/município), ranking via RPC, página de Premium (Pix manual, informativa), `/termos` e `/privacidade`, scripts de seed e de ativação Pix, teste SQL de pontuação e acesso.
+
+**Pendências conhecidas:**
+- Logs de acesso com retenção mínima de 5 anos (LGPD/Marco Civil): a tabela `logs_acesso` da `main` não está nas migrations atuais. Recriar e registrar login, início de simulado e encerramento de conta.
+- `abandonar_sessoes_inativas()` existe (30 dias) mas **não está agendada**. Código usa o status `abandonado` (o relatório diz `abandonada`).
+- `config.toml` aponta para `supabase/seed.sql`, que não existe (quebra `db reset`).
+- Teste E2E em navegador com conta real nunca foi feito.
+- Termos comerciais do Pix e licenciamento das questões de bancas.
+- Pipeline do agente de IA ainda não documentado no repositório (formato de entrega, validações, quem estima `peso_dificuldade` e `t_ref_segundos`).
+- 8 vulnerabilidades moderadas só em dev (cadeia do ESLint); manter `npm audit --omit=dev` limpo.
+- Copy desatualizado: `LeftPanel` ainda promete "Sequência de estudos — não deixe o fogo apagar". Conferir landing e checkout contra o que realmente existe.
+
+## 8. Decisões em aberto
+
+1. Anúncios no plano gratuito (previstos na especificação antiga; o texto antigo do CLAUDE proibia). **Não construir** até decidir.
+2. Streak diário estilo Duolingo (seção 9).
+3. Posição de gratuitos: incluí-los no cálculo e restringir só a visualização é a recomendação do relatório.
+4. Período padrão do ranking (geral, semanal ou mensal).
+5. Reresolução de questão: hoje vale 0 no ranking; confirmar se deve valer valor reduzido.
+6. Prazo de abandono e se respostas parciais consolidam pontos.
+7. Origem da dificuldade: fixa no seed ou derivada da taxa de acerto.
+8. Limite diário de questões para gratuitos.
+9. Manter ou não o contador de sequência visível durante o simulado.
+10. Revisão e sinalização dos comentários gerados por IA (seção 11).
+11. Filtros por carreira, cargo, nível de escolaridade, ano e estado, e o modelo de dados do nível (seção 2).
+
+## 9. Fora de escopo até decisão
+
+- **Streak diário** (dias consecutivos de estudo): foi removido do schema. "Sequência" no código = acertos seguidos na sessão.
+- Anúncios, comunidade dentro do app, CMS, gateway de pagamento, PWA, apps Android/iOS.
+
+## 10. Convenções de código
+
+- TypeScript strict. Proibido `any`. Tipos do Supabase em `src/types/database.ts`, **regenerados após qualquer mudança de schema, antes de escrever código que use as tabelas**.
+- UI e termos de domínio em PT-BR. Mensagens de erro de auth traduzidas.
+- Pastas de rota em kebab-case; grupos `(public)` e `(private)`.
+- Componentes em `src/app/components/` (`ui/` para shadcn e primitivos, raiz para custom). Pequenos e focados; extrair só com duplicação real.
+- Formulários: React Hook Form + Zod; schemas em `src/schema/`.
+- Estilo: só Tailwind v4 com os tokens de `globals.css` (`bg-surface`, `text-muted`, `bg-accent`...). Fontes via `next/font` (`font-bebas`, `font-sans`). Sem CSS inline nem arquivos CSS novos.
+- Enunciado e comentário renderizados como markdown leve.
+- Antes de criar rota ou componente, ler a skill relevante em `.claude/skills/` (`nova-rota`, `rota-layout-page`, `componentes-ui`, `react-hook-form`, `tanstack-query`, `frontend-design`).
+
+## 11. Conteúdo e pipeline
+
+**Origem das questões:** provas públicas já aplicadas. Toda questão exibida identifica banca e concurso de origem.
+
+**Comentários (`justificativa`):** gerados por um **agente de IA** que coleta as questões de provas anteriores e produz o comentário de cada uma. O agente fica **fora deste repositório**; o contrato com o app é o CSV abaixo.
+
+Regras para o agente e para o app:
+- O gabarito vem da prova oficial da banca. O agente **nunca infere nem inventa gabarito**; se o gabarito oficial é desconhecido ou inconsistente, a questão entra com o `status_gabarito` correspondente e **não fica ativa**.
+- O comentário deve ser texto próprio, explicativo e coerente com o gabarito. **Nunca copiar** gabarito comentado de outras plataformas (QConcursos, Gran, TEC etc.).
+- Questão anulada entra com `status_gabarito = anulada`.
+- Questão ativa exige status de gabarito definitivo (ou anulada) e comentário preenchido; o seed rejeita o CSV inteiro se houver violação.
+
+**Em aberto (decidir antes de abrir para usuários reais):**
+- Haverá revisão humana (total ou por amostragem) dos comentários antes de `ativo = true`? Comentário de IA errado em questão paga é risco de produto.
+- A UI deve indicar que o comentário é gerado por IA? (recomendado, por transparência)
+- Canal para o usuário reportar comentário ou gabarito errado.
+
+**Entrada no banco:** CSV → `npm run seed -- <arquivo.csv>` (usa service role local). Colunas: `codigo`, `foco`, `tipo`, `banca_slug`, `materia_slug`, `cargo_slug`, `carreira_slug`, `estado_prova`, `ano`, `enunciado`, `alternativas`, `gabarito`, `justificativa`, `justificativa_alternativas`, `ativo`, `peso_dificuldade`, `t_ref_segundos`, `status_gabarito`.
+- O script valida o CSV inteiro antes de importar, em lotes idempotentes por `codigo`.
+- Ele **não cria** dados de referência: bancas, matérias, cargos e carreiras precisam existir antes. Slugs opcionais podem ficar vazios.
+- `peso_dificuldade` (1 a 3) e `t_ref_segundos` também vêm do CSV; definir quem os estima (agente ou regra) é **(em aberto)**, pois alimentam a pontuação.
+
+## 12. Comandos
+
+- `npm run dev` / `npm run build` / `npm run lint`
+- `npx supabase migration new <nome>` — nova migration
+- `npx supabase migration up` — aplicar migrations locais sem reset
+- `npx supabase gen types typescript > src/types/database.ts` — regenerar tipos
+- `npx supabase db lint --schema public` — validar o schema
+- `npx supabase db query --file supabase/tests/scoring_and_access.sql` — testes SQL de pontuação e grants
+- `npm run seed -- <arquivo.csv>` — importar questões
+- `npm run pix:ativar -- <user_id> <dias> <operador_id>` — ativar Premium após confirmar o Pix
+
+## 13. Fluxo de trabalho
+
+- Uma fatia vertical por vez, não o app inteiro.
+- Mudança grande, ou que toque schema, pontuação, autenticação, planos ou ranking: **propor plano e esperar confirmação** antes de editar.
+- Mudança de schema exige: migration versionada, regeneração de tipos e testes das RPCs/RLS afetadas.
+- Toda RPC nova segue a seção 5 (item 2) e tem teste de grants (`anon` deve receber `42501`).
+- Ao mexer na fórmula, atualizar a seção 4 e os testes de `calcular_pontos` (acerto instantâneo, em `t_ref`, acima de 3× `t_ref`; sequências de 1, 3 e 7; erro no meio da sequência).
+- Ao concluir uma fatia, atualizar a seção 7.
+
+## 14. Glossário
+
+- **Banca:** organizadora da prova (FGV, CEBRASPE, FUNDATEC...)
+- **Matéria:** disciplina (Direito Penal, Português...)
+- **Gabarito:** alternativa correta
+- **Justificativa / comentário:** explicação da questão gerada pelo agente de IA
+- **Sessão / simulado:** conjunto de N questões gerado pelos filtros
+- **Sequência:** acertos seguidos dentro de uma sessão (multiplicador de pontos)
+- **Peso de dificuldade:** 1 a 3, define a base de pontos
+- **t_ref:** tempo de referência da questão, usado no bônus de tempo
+- **Anti-farm:** só o primeiro acerto de cada questão pontua
