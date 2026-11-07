@@ -2,10 +2,33 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Rotas que exigem autenticação
-const PROTECTED_ROUTES = ['/dashboard', '/estudar', '/filtros', '/simulado', '/ranking', '/perfil']
+const PROTECTED_ROUTES = [
+  '/dashboard',
+  '/estudar',
+  '/filtros',
+  '/resultado',
+  '/ranking',
+  '/perfil',
+  '/estatisticas',
+  '/checkout',
+  '/simulado',
+]
 
 // Rotas exclusivas para usuários NÃO autenticados
 const AUTH_ROUTES = ['/login', '/cadastro']
+
+function getSafeRedirect(pathname: string | null, fallback = '/dashboard') {
+  if (!pathname) return fallback
+
+  if (!pathname.startsWith('/')) return fallback
+
+  const invalidPrefixes = ['//', 'http://', 'https://', 'javascript:']
+  if (invalidPrefixes.some(prefix => pathname.toLowerCase().startsWith(prefix))) {
+    return fallback
+  }
+
+  return pathname
+}
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -38,7 +61,8 @@ export async function middleware(request: NextRequest) {
   if (!user && PROTECTED_ROUTES.some(route => pathname.startsWith(route))) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    url.searchParams.set('redirect', pathname)
+    const safePath = getSafeRedirect(pathname)
+    url.searchParams.set('redirect', safePath)
     return NextResponse.redirect(url)
   }
 

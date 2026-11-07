@@ -1,0 +1,2 @@
+-- O SQL original desta migration remota nao esta disponivel neste clone.
+-- O snapshot 20261106120000_remote_schema_baseline.sql registra o schema atual.

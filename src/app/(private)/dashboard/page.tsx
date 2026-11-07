@@ -24,14 +24,14 @@ export default async function DashboardPage() {
   const streakAtiva = profile.streak_ultima_data === hoje;
 
   return (
-    <div className="grid grid-cols-[240px_1fr] min-h-screen bg-bg font-sans">
+    <div className="grid min-h-screen grid-cols-1 bg-bg font-sans md:grid-cols-[240px_minmax(0,1fr)]">
       {/* ── Sidebar ── */}
-      <aside className="bg-surface border-r border-border flex flex-col px-4 py-7 sticky top-0 h-screen overflow-y-auto">
+      <aside className="flex flex-col border-b border-border bg-surface px-4 py-4 md:sticky md:top-0 md:h-screen md:overflow-y-auto md:border-b-0 md:border-r md:py-7">
         <Link href="/" className="block px-2 mb-9">
           <Logo size="md" />
         </Link>
 
-        <nav className="flex flex-col gap-0.5 flex-1">
+        <nav className="flex flex-1 flex-row gap-0.5 overflow-x-auto md:flex-col">
           {[
             { href: "/dashboard", icon: "⊞", label: "Início", active: true },
             { href: "/filtros", icon: "🎯", label: "Novo Simulado" },
@@ -60,7 +60,7 @@ export default async function DashboardPage() {
           </Link>
         </nav>
 
-        <div className="flex flex-col gap-3 pt-4 border-t border-border mt-4">
+        <div className="mt-4 flex flex-row items-center gap-3 border-t border-border pt-4 md:flex-col md:items-stretch">
           {!isPremium && (
             <Link
               href="/checkout/premium"
@@ -93,7 +93,7 @@ export default async function DashboardPage() {
       </aside>
 
       {/* ── Main ── */}
-      <main className="p-9 overflow-y-auto flex flex-col gap-8 max-w-[900px]">
+      <main className="flex min-w-0 flex-col gap-6 overflow-y-auto p-4 sm:p-6 lg:gap-8 lg:p-9">
         <header className="flex items-start justify-between gap-4">
           <div>
             <div className="font-bebas text-3xl tracking-wide text-text-base">
@@ -107,7 +107,7 @@ export default async function DashboardPage() {
         </header>
 
         {/* Stats */}
-        <section className="grid grid-cols-4 gap-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Pontuação total"
             value={profile.pontuacao.toLocaleString("pt-BR")}
@@ -148,7 +148,7 @@ export default async function DashboardPage() {
 
         {/* CTA */}
         <section>
-          <div className="bg-surface border border-border rounded-2xl p-8 grid grid-cols-[1fr_auto] gap-10 items-center relative overflow-hidden">
+          <div className="relative grid grid-cols-1 items-center gap-8 overflow-hidden rounded-2xl border border-border bg-surface p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-10">
             <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-accent/4" />
             <div>
               <div className="inline-flex items-center gap-1.5 bg-accent/10 border border-accent/25 text-accent px-3 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase mb-3.5">

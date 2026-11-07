@@ -32,10 +32,22 @@ export default function LoginPage() {
   );
 }
 
+function getSafeRedirect(pathname: string | null, fallback = "/dashboard") {
+  if (!pathname) return fallback;
+  if (!pathname.startsWith("/")) return fallback;
+
+  const invalidPrefixes = ["//", "http://", "https://", "javascript:"];
+  if (invalidPrefixes.some((prefix) => pathname.toLowerCase().startsWith(prefix))) {
+    return fallback;
+  }
+
+  return pathname;
+}
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/dashboard";
+  const redirect = getSafeRedirect(searchParams.get("redirect"));
   const errorParam = searchParams.get("error");
   const supabase = createClient();
 

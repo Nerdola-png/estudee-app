@@ -2,10 +2,22 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 
+function getSafeRedirect(pathname: string | null, fallback = '/dashboard') {
+  if (!pathname) return fallback
+  if (!pathname.startsWith('/')) return fallback
+
+  const invalidPrefixes = ['//', 'http://', 'https://', 'javascript:']
+  if (invalidPrefixes.some(prefix => pathname.toLowerCase().startsWith(prefix))) {
+    return fallback
+  }
+
+  return pathname
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const next = getSafeRedirect(searchParams.get('next'))
 
   if (code) {
     const cookieStore = await cookies()
