@@ -6,18 +6,20 @@ Revisão do fluxo de autenticação, filtros, estudo e resultado; schema e polic
 
 ## Trabalho concluído nesta rodada
 
-- Filtros agora leem `bancas` e `materias` reais, enviam IDs e iniciam uma sessão no banco.
+- Filtros agora oferecem busca/autocomplete com seleção múltipla de bancas e matérias, enviam arrays de IDs e iniciam uma sessão no banco.
+- Bebas Neue e DM Sans são carregadas globalmente via `next/font`, auto-hospedadas e conectadas aos tokens Tailwind `font-bebas`/`font-sans`.
 - Estudo carrega `sessoes`/`sessao_questoes` por RPC. A correção é validada no Postgres e só é devolvida depois da resposta.
 - Resultado é calculado a partir da sessão autenticada e agrupado por matéria.
+- Questões com `status_gabarito = 'anulada'` são incluídas mesmo sem gabarito, contam como acerto após uma alternativa válida e exibem aviso ao usuário; gabaritos inconsistentes ficam fora de novos simulados.
 - RPCs publicadas: `iniciar_sessao`, `carregar_sessao` e `responder_questao`, em [`supabase/migrations/20261106140000_add_secure_quiz_session_rpcs.sql`](../supabase/migrations/20261106140000_add_secure_quiz_session_rpcs.sql).
 - Leitura anônima foi limitada a campos públicos de questões ativas; `gabarito` e justificativas permanecem sem grant, em [`supabase/migrations/20261106130000_enable_question_read_access.sql`](../supabase/migrations/20261106130000_enable_question_read_access.sql).
 - Tipos de banco foram regenerados do schema local e hooks seguem TanStack Query.
 
 ## Achados prioritários
 
-### P0 — Dependências com vulnerabilidades críticas
+### P2 — Vulnerabilidades moderadas na cadeia de desenvolvimento
 
-`npm audit` reportou 31 vulnerabilidades no total: 2 críticas, 13 altas, 15 moderadas e 1 baixa. Só em dependências de produção são 24: 2 críticas, 13 altas, 8 moderadas e 1 baixa. O audit aponta `next@16.2.7` como vulnerável e oferece `next@16.4.5` como correção; `proxy-addr` também aparece como crítica transitiva. `zod` e `shadcn` aparecem como dependências diretas vulneráveis. Atualizar com revisão de breaking changes e repetir build/audit; não usar `npm audit fix --force` sem avaliar a árvore.
+As versões diretas vulneráveis foram corrigidas: `next` e `eslint-config-next` estão em `16.4.5`, e `zod` em `4.6.7`. A CLI `shadcn` foi removida das dependências instaladas porque não é importada pelo app; a folha global já contém os tokens e estilos utilizados. `npm audit --omit=dev` agora reporta zero vulnerabilidades. O audit completo reporta 8 moderadas, todas transitivas de `eslint-config-next`/TypeScript ESLint. O `npm audit fix` tenta resolver esse grupo com downgrade do `eslint-config-next` para `15.x`; não foi aplicado. Reavaliar quando houver correção compatível com Next 16 e manter o monitoramento no CI.
 
 ### P1 — Storage/avatar sem policy confirmada e erros ignorados
 
@@ -60,13 +62,14 @@ A documentação antiga descreve `questoes.ativa/correta/comentario` e tabela `r
 - O middleware chama `auth.getUser()` em praticamente todas as rotas, inclusive páginas públicas. Restringir o matcher às rotas que precisam renovar/verificar sessão, preservando o refresh exigido pelo Supabase.
 - A seleção de questões usa `ORDER BY random()`. É simples para o volume atual, mas tende a ordenar/varrer a população elegível inteira; medir com `EXPLAIN ANALYZE` quando o banco crescer e substituir por seleção aleatória escalável.
 - Índices atuais já cobrem banca, matéria, ano, cargo, sessão por usuário/data e ordem de questão. Evitar adicionar índices sem plano de consulta/medição.
-- A fonte externa em [`src/app/(public)/cadastro/layout.tsx`](../src/app/(public)/cadastro/layout.tsx) gera warning do ESLint e só carrega nesse segmento. Hospedar fonte local ou centralizar com a estratégia suportada pelo Next.
+- As fontes são self-hosted via `next/font`; não há mais request externo de fonte nem warning de fonte no lint.
 - `supabase/config.toml` referencia `supabase/seed.sql`, mas o arquivo não existe; `supabase db reset` reporta `no files matched pattern`. Criar seed local versionado ou desativar seed até existir.
 
 ## Controles de segurança confirmados
 
 - `profiles`, `sessoes` e `sessao_questoes` têm RLS no schema observado; o perfil tem policy por `auth.uid()` e sessões são do usuário dono.
 - Questões ativas podem ser lidas sem revelar gabarito/justificativa. Teste remoto confirmou leitura pública de enunciado/alternativas e negou leitura direta de `gabarito`.
+- Questões anuladas são tratadas pelo status explícito `status_gabarito`, não pelo valor de gabarito nulo; respostas são contabilizadas como acerto sem revelar gabarito.
 - Execução das RPCs está restrita a `authenticated`; teste remoto confirmou que a anon key recebe `42501` ao chamar `iniciar_sessao`.
 - RPCs são `SECURITY DEFINER`, usam `search_path = ''`, verificam `auth.uid()` e a propriedade/pertinência da sessão/questão.
 - Nenhuma service-role key foi encontrada no código inspecionado; a chave anon usada no browser é pública por definição e depende de RLS.
@@ -75,16 +78,19 @@ A documentação antiga descreve `questoes.ativa/correta/comentario` e tabela `r
 
 - `npx supabase db reset`: passou com todas as migrations locais.
 - Teste SQL transacional local: gabarito ausente antes da resposta, entrada multi-caractere rejeitada, correção retornada após resposta e retry idempotente; fixture revertida com rollback.
+- Teste SQL transacional local de scoring: anulada sem gabarito computada como acerto, gabarito normalizado, sessão finalizada em 2/2 e questão com gabarito fora das alternativas excluída; fixture revertida.
 - Teste da API remota com anon key: matérias/questões legíveis; gabarito negado; execução de RPC negada.
 - `npx supabase db lint --schema public`: sem erros.
 - `npx supabase db push --dry-run --remote`: remoto atualizado.
 - `npm run build`: passou.
-- `npm run lint`: zero erros e uma warning sobre fonte externa no layout de cadastro.
-- `npm audit`: 31 vulnerabilidades; priorizar correção das críticas/altas.
+- `npm run lint`: sem erros ou warnings após centralizar as fontes.
+- `npm audit --omit=dev`: zero vulnerabilidades.
+- `npm audit`: 8 vulnerabilidades moderadas, todas na cadeia de desenvolvimento do ESLint.
+- Dependências atualizadas: `next@16.4.5`, `eslint-config-next@16.4.5`, `zod@4.6.7`; removido `shadcn` CLI não utilizado pelo app.
 
 ## Próxima ordem recomendada
 
-1. Atualizar Next e dependências vulneráveis com changelog, `npm audit`, build e teste de auth/quiz.
+1. Manter audit de produção no CI e reavaliar as 8 vulnerabilidades moderadas transitivas do ESLint quando houver correção compatível com Next 16.
 2. Confirmar políticas/bucket Storage e corrigir tratamento de erro do cadastro.
 3. Implementar redefinição de senha real e testes automatizados para RPCs/RLS.
 4. Atualizar documentação do schema e remover/ocultar telas demonstrativas fora do escopo v0.

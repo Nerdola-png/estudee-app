@@ -77,14 +77,14 @@ export type Database = {
                   ]
                 },"questoes": {
                   Row: {
-                    "alternativas": NonNullable<Json>,"ano": number,"ativo": boolean,"banca_id": number,"cargo_id": number | null,"carreira_id": number | null,"codigo": string,"created_at": string,"enunciado": string,"estado_prova": string,"foco": Database["public"]['Enums']["foco_questao"],"gabarito": string,"id": string,"justificativa": string | null,"justificativa_alternativas": Json | null,"materia_id": number,"texto_base_id": string | null,"tipo": Database["public"]['Enums']["tipo_questao"]
+                    "alternativas": NonNullable<Json>,"ano": number,"ativo": boolean,"banca_id": number,"cargo_id": number | null,"carreira_id": number | null,"codigo": string,"created_at": string,"enunciado": string,"estado_prova": string,"foco": Database["public"]['Enums']["foco_questao"],"gabarito": string | null,"id": string,"justificativa": string | null,"justificativa_alternativas": Json | null,"materia_id": number,"status_gabarito": Database["public"]['Enums']["status_gabarito"],"texto_base_id": string | null,"tipo": Database["public"]['Enums']["tipo_questao"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "alternativas": NonNullable<Json>,"ano": number,"ativo"?: boolean,"banca_id": number,"cargo_id"?: number | null,"carreira_id"?: number | null,"codigo": string,"created_at"?: string,"enunciado": string,"estado_prova": string,"foco": Database["public"]['Enums']["foco_questao"],"gabarito": string,"id"?: string,"justificativa"?: string | null,"justificativa_alternativas"?: Json | null,"materia_id": number,"texto_base_id"?: string | null,"tipo": Database["public"]['Enums']["tipo_questao"]
+                    "alternativas": NonNullable<Json>,"ano": number,"ativo"?: boolean,"banca_id": number,"cargo_id"?: number | null,"carreira_id"?: number | null,"codigo": string,"created_at"?: string,"enunciado": string,"estado_prova": string,"foco": Database["public"]['Enums']["foco_questao"],"gabarito"?: string | null,"id"?: string,"justificativa"?: string | null,"justificativa_alternativas"?: Json | null,"materia_id": number,"status_gabarito"?: Database["public"]['Enums']["status_gabarito"],"texto_base_id"?: string | null,"tipo": Database["public"]['Enums']["tipo_questao"]
                   }
                   Update: {
-                    "alternativas"?: NonNullable<Json>,"ano"?: number,"ativo"?: boolean,"banca_id"?: number,"cargo_id"?: number | null,"carreira_id"?: number | null,"codigo"?: string,"created_at"?: string,"enunciado"?: string,"estado_prova"?: string,"foco"?: Database["public"]['Enums']["foco_questao"],"gabarito"?: string,"id"?: string,"justificativa"?: string | null,"justificativa_alternativas"?: Json | null,"materia_id"?: number,"texto_base_id"?: string | null,"tipo"?: Database["public"]['Enums']["tipo_questao"]
+                    "alternativas"?: NonNullable<Json>,"ano"?: number,"ativo"?: boolean,"banca_id"?: number,"cargo_id"?: number | null,"carreira_id"?: number | null,"codigo"?: string,"created_at"?: string,"enunciado"?: string,"estado_prova"?: string,"foco"?: Database["public"]['Enums']["foco_questao"],"gabarito"?: string | null,"id"?: string,"justificativa"?: string | null,"justificativa_alternativas"?: Json | null,"materia_id"?: number,"status_gabarito"?: Database["public"]['Enums']["status_gabarito"],"texto_base_id"?: string | null,"tipo"?: Database["public"]['Enums']["tipo_questao"]
                   }
                   Relationships: [
                     {
@@ -183,14 +183,14 @@ isOneToOne: false
 { Args: { "p_sessao_id": string }; Returns: Json
                            },
 "iniciar_sessao":
-{ Args: { "p_banca_id"?: number,"p_materia_id"?: number,"p_total_questoes": number }; Returns: Json
+{ Args: { "p_banca_ids"?: (number)[],"p_materia_ids"?: (number)[],"p_total_questoes": number }; Returns: Json
                            },
 "responder_questao":
 { Args: { "p_questao_id": string,"p_resposta": string,"p_sessao_id": string }; Returns: Json
                            }
           }
           Enums: {
-            "foco_questao": "concurso"|"vestibular"|"oab","sessao_status": "em_andamento"|"finalizado"|"abandonado","tipo_questao": "multipla_escolha"|"certo_errado"
+            "foco_questao": "concurso"|"vestibular"|"oab","sessao_status": "em_andamento"|"finalizado"|"abandonado","status_gabarito": "nao_verificado"|"preliminar"|"definitivo"|"anulada"|"pendente","tipo_questao": "multipla_escolha"|"certo_errado"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -306,7 +306,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "foco_questao": ["concurso", "vestibular", "oab"],"sessao_status": ["em_andamento", "finalizado", "abandonado"],"tipo_questao": ["multipla_escolha", "certo_errado"]
+            "foco_questao": ["concurso", "vestibular", "oab"],"sessao_status": ["em_andamento", "finalizado", "abandonado"],"status_gabarito": ["nao_verificado", "preliminar", "definitivo", "anulada", "pendente"],"tipo_questao": ["multipla_escolha", "certo_errado"]
           }
         }
 } as const

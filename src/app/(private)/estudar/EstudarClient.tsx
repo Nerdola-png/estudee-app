@@ -28,7 +28,7 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
       <main className="flex min-h-screen items-center justify-center bg-bg px-4 py-8">
         <div className="max-w-md rounded-xl border border-border bg-surface p-6 text-center">
           <h1 className="mb-2 font-bebas text-4xl text-text-base">Não foi possível abrir o simulado</h1>
-          <p className="mb-5 text-sm text-muted">A sessão pode ter expirado ou não pertencer a esta conta.</p>
+          <p className="mb-5 text-sm text-muted">Não foi possível carregar esta sessão. Volte aos filtros e tente novamente.</p>
           <Link href="/filtros" className="inline-flex rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-bg">
             Criar outro simulado
           </Link>
@@ -56,7 +56,7 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
   const respostaAtual = responder.data && responder.variables?.questaoId === questao.id
     ? responder.data
     : questao.resultado;
-  const alternativaSelecionada = questao.resposta ?? respostaSelecionada;
+  const alternativaSelecionada = questao.resposta ?? respostaSelecionada; // Context for selected answer
   const totalQuestoes = sessao.questoes.length;
   const progresso = Math.round(((indiceAtual + (respostaAtual ? 1 : 0)) / totalQuestoes) * 100);
   const acertos = sessao.questoes.filter((item) => item.resultado?.acertou).length
@@ -114,21 +114,28 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
         </section>
 
         <section className="rounded-xl border border-border bg-surface p-5 md:p-7">
+          {questao.anulada && (
+            <p className="mb-5 rounded-lg border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+              Esta questão foi anulada originalmente pela banca. Responda para registrar seu acerto.
+            </p>
+          )}
           <div className="mb-6 rounded-lg border border-border bg-bg/40 p-4">
             <p className="text-lg font-medium leading-8 text-text-base md:text-xl">{questao.enunciado}</p>
           </div>
 
           <div className="space-y-3">
             {questao.alternativas.map((alternativa) => {
-              const selected = alternativaSelecionada === alternativa.letra;
-              const correct = Boolean(respostaAtual && alternativa.letra === respostaAtual.gabarito);
+              const selected = alternativaSelecionada === alternativa.key;
+              const correct = Boolean(
+                respostaAtual && (respostaAtual.anulada ? selected : alternativa.key === respostaAtual.gabarito)
+              );
               const wrong = Boolean(respostaAtual && selected && !correct);
 
               return (
                 <button
-                  key={alternativa.letra}
+                  key={alternativa.key}
                   type="button"
-                  onClick={() => !respostaAtual && setRespostaSelecionada(alternativa.letra)}
+                  onClick={() => !respostaAtual && setRespostaSelecionada(alternativa.key)}
                   disabled={Boolean(respostaAtual) || responder.isPending}
                   className={`flex w-full items-start gap-3 rounded-lg border px-4 py-4 text-left transition-colors ${
                     correct
@@ -149,7 +156,7 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
                           ? 'border-accent bg-accent text-bg'
                           : 'border-border bg-bg text-text-base'
                   }`}>
-                    {alternativa.letra}
+                    {alternativa.key}
                   </span>
                   <span className="flex-1 leading-7">{alternativa.texto}</span>
                 </button>
@@ -163,7 +170,11 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
                   respostaAtual.acertou ? 'bg-green/15 text-green' : 'bg-red-500/15 text-red-400'
                 }`}>
-                  {respostaAtual.acertou ? 'Acertou' : `Errou · correta ${respostaAtual.gabarito}`}
+                  {respostaAtual.anulada
+                    ? 'Anulada pela banca · acerto computado'
+                    : respostaAtual.acertou
+                      ? 'Acertou'
+                      : `Errou · correta ${respostaAtual.gabarito}`}
                 </span>
                 <span className="text-xs uppercase tracking-[0.18em] text-muted">Comentário</span>
               </div>

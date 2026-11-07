@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/components/ui/button';
+import { MultiAutocomplete } from '@/app/components/ui/MultiAutocomplete';
 import { useIniciarSessao, useOpcoesSimulado } from '@/hooks/use-quiz';
 import {
   Select,
@@ -19,20 +20,26 @@ export default function FiltrosPage() {
   const router = useRouter();
   const { data: opcoes, error: erroOpcoes, isPending: carregandoOpcoes, refetch } = useOpcoesSimulado();
   const iniciarSessao = useIniciarSessao();
-  const [bancaId, setBancaId] = useState('todas');
-  const [materiaId, setMateriaId] = useState('todas');
+  const [bancaIds, setBancaIds] = useState<string[]>([]);
+  const [materiaIds, setMateriaIds] = useState<string[]>([]);
   const [quantidade, setQuantidade] = useState('20');
 
-  const bancaSelecionada = opcoes?.bancas.find((item) => String(item.id) === bancaId)?.nome ?? 'Todas';
-  const materiaSelecionada = opcoes?.materias.find((item) => String(item.id) === materiaId)?.nome ?? 'Todas';
+  const bancaSelecionada = bancaIds
+    .map((id) => opcoes?.bancas.find((item) => String(item.id) === id)?.nome)
+    .filter((nome): nome is string => Boolean(nome))
+    .join(', ') || 'Todas';
+  const materiaSelecionada = materiaIds
+    .map((id) => opcoes?.materias.find((item) => String(item.id) === id)?.nome)
+    .filter((nome): nome is string => Boolean(nome))
+    .join(', ') || 'Todas';
   const resumo = `${bancaSelecionada} • ${materiaSelecionada} • ${quantidade} questões`;
 
   const handleSubmit = async () => {
     try {
       const sessao = await iniciarSessao.mutateAsync({
         totalQuestoes: Number(quantidade),
-        bancaId: bancaId === 'todas' ? null : Number(bancaId),
-        materiaId: materiaId === 'todas' ? null : Number(materiaId),
+        bancaIds: bancaIds.map(Number),
+        materiaIds: materiaIds.map(Number),
       });
       router.push(`/estudar?sessao=${encodeURIComponent(sessao.sessao_id)}`);
     } catch {
@@ -74,39 +81,25 @@ export default function FiltrosPage() {
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-text-base">Banca</label>
-                <Select value={bancaId} onValueChange={(value) => setBancaId(value ?? 'todas')} disabled={carregandoOpcoes || Boolean(erroOpcoes)}>
-                  <SelectTrigger className="w-full justify-between rounded-xl border border-border bg-bg/60 px-3 text-left text-sm text-text-base disabled:cursor-not-allowed disabled:opacity-60">
-                    <SelectValue placeholder="Selecione a banca" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todas">Todas</SelectItem>
-                    {opcoes?.bancas.map((item) => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {item.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <MultiAutocomplete
+                label="Banca"
+                placeholder="Digite para buscar bancas..."
+                emptyMessage="Nenhuma banca encontrada."
+                options={opcoes?.bancas ?? []}
+                selectedIds={bancaIds}
+                onChange={setBancaIds}
+                disabled={carregandoOpcoes || Boolean(erroOpcoes)}
+              />
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-text-base">Matéria</label>
-                <Select value={materiaId} onValueChange={(value) => setMateriaId(value ?? 'todas')} disabled={carregandoOpcoes || Boolean(erroOpcoes)}>
-                  <SelectTrigger className="w-full justify-between rounded-xl border border-border bg-bg/60 px-3 text-left text-sm text-text-base disabled:cursor-not-allowed disabled:opacity-60">
-                    <SelectValue placeholder="Selecione a matéria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todas">Todas</SelectItem>
-                    {opcoes?.materias.map((item) => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {item.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <MultiAutocomplete
+                label="Matéria"
+                placeholder="Digite para buscar matérias..."
+                emptyMessage="Nenhuma matéria encontrada."
+                options={opcoes?.materias ?? []}
+                selectedIds={materiaIds}
+                onChange={setMateriaIds}
+                disabled={carregandoOpcoes || Boolean(erroOpcoes)}
+              />
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-text-base">Quantidade</label>

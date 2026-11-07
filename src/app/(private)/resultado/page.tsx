@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 
 const alternativaSchema = z.object({
-  letra: z.string(),
+  key: z.string(),
   texto: z.string(),
 });
 
@@ -13,10 +13,12 @@ const questaoSchema = z.object({
   enunciado: z.string(),
   alternativas: z.array(alternativaSchema),
   materia: z.string(),
+  anulada: z.boolean(),
   resposta: z.string().nullable(),
   resultado: z.object({
     acertou: z.boolean(),
-    gabarito: z.string(),
+    anulada: z.boolean(),
+    gabarito: z.string().nullable(),
     justificativa: z.string().nullable(),
     justificativa_alternativas: z.unknown().nullable(),
   }).nullable(),

@@ -88,9 +88,16 @@ function LoginContent() {
 
   const onReset = async (data: ResetData) => {
     const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
     });
-    if (!error) setResetSent(true);
+    if (error) {
+      resetForm.setError("root", {
+        message: "Não foi possível enviar o link. Confira o endereço e tente novamente.",
+      });
+      return;
+    }
+
+    setResetSent(true);
   };
 
   // ── Reset enviado ────────────────────────────────────────────────────────
@@ -144,6 +151,11 @@ function LoginContent() {
                   autoFocus
                 />
               </Field>
+              {resetForm.formState.errors.root?.message && (
+                <p role="alert" className="text-sm text-red-400">
+                  {resetForm.formState.errors.root.message}
+                </p>
+              )}
               <Button
                 type="submit"
                 disabled={resetForm.formState.isSubmitting}

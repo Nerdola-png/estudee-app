@@ -2,10 +2,41 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { Field } from '@/app/components/Field';
 import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { createClient } from '@/lib/supabase/client';
+import {
+  updatePasswordSchema,
+  type UpdatePasswordData,
+} from '@/schema/login';
 
 export default function ResetPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
+  const supabase = createClient();
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<UpdatePasswordData>({
+    resolver: zodResolver(updatePasswordSchema),
+  });
+
+  const onSubmit = async (data: UpdatePasswordData) => {
+    const { error } = await supabase.auth.updateUser({ password: data.senha });
+
+    if (error) {
+      setError('root', {
+        message: 'Não foi possível atualizar a senha. Solicite um novo link e tente novamente.',
+      });
+      return;
+    }
+
+    setSubmitted(true);
+  };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-4 py-8">
@@ -22,29 +53,39 @@ export default function ResetPasswordPage() {
               Crie uma nova senha para manter seu acesso seguro.
             </p>
 
-            <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-text-base">Nova senha</label>
-                <input
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+              <Field label="Nova senha" error={errors.senha?.message}>
+                <Input
+                  {...register('senha')}
                   type="password"
+                  autoComplete="new-password"
                   placeholder="Mínimo 8 caracteres"
-                  className="w-full rounded-xl border border-border bg-bg/40 px-3 py-2.5 text-sm text-text-base outline-none transition-colors placeholder:text-muted focus:border-accent"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-text-base">Confirmar senha</label>
-                <input
+              <Field label="Confirmar senha" error={errors.confirmarSenha?.message}>
+                <Input
+                  {...register('confirmarSenha')}
                   type="password"
+                  autoComplete="new-password"
                   placeholder="Repita a nova senha"
-                  className="w-full rounded-xl border border-border bg-bg/40 px-3 py-2.5 text-sm text-text-base outline-none transition-colors placeholder:text-muted focus:border-accent"
                 />
-              </div>
+              </Field>
 
-              <Button onClick={() => setSubmitted(true)} className="w-full bg-accent text-bg hover:bg-accent2">
-                Salvar nova senha
+              {errors.root?.message && (
+                <p role="alert" className="text-sm text-red-400">
+                  {errors.root.message}
+                </p>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-accent text-bg hover:bg-accent2"
+              >
+                {isSubmitting ? 'Salvando…' : 'Salvar nova senha'}
               </Button>
-            </div>
+            </form>
           </>
         ) : (
           <div className="text-center">

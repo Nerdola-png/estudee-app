@@ -5,13 +5,14 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 
 const alternativaSchema = z.object({
-  letra: z.string(),
+  key: z.string(),
   texto: z.string(),
 });
 
 const resultadoSchema = z.object({
   acertou: z.boolean(),
-  gabarito: z.string(),
+  anulada: z.boolean(),
+  gabarito: z.string().nullable(),
   justificativa: z.string().nullable(),
   justificativa_alternativas: z.unknown().nullable(),
 });
@@ -22,6 +23,7 @@ const questaoSessaoSchema = z.object({
   enunciado: z.string(),
   alternativas: z.array(alternativaSchema),
   materia: z.string(),
+  anulada: z.boolean(),
   resposta: z.string().nullable(),
   resultado: resultadoSchema.nullable(),
 });
@@ -75,13 +77,13 @@ export function useIniciarSessao() {
   return useMutation({
     mutationFn: async (input: {
       totalQuestoes: number;
-      bancaId: number | null;
-      materiaId: number | null;
+      bancaIds: number[];
+      materiaIds: number[];
     }) => {
       const { data, error } = await supabase.rpc('iniciar_sessao', {
         p_total_questoes: input.totalQuestoes,
-        p_banca_id: input.bancaId ?? undefined,
-        p_materia_id: input.materiaId ?? undefined,
+        p_banca_ids: input.bancaIds.length > 0 ? input.bancaIds : undefined,
+        p_materia_ids: input.materiaIds.length > 0 ? input.materiaIds : undefined,
       });
 
       if (error) throw error;
