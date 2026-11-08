@@ -239,6 +239,18 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
               Esta questão foi anulada originalmente pela banca. Responda para registrar seu acerto.
             </p>
           )}
+          {questao.texto_base && (
+            <div className="mb-4 rounded-lg border border-border bg-bg/40 p-4 md:p-5">
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-muted">Texto de apoio</p>
+              {questao.texto_base.titulo && (
+                <p className="mb-2 text-base font-semibold text-text-base">{questao.texto_base.titulo}</p>
+              )}
+              <p className="whitespace-pre-line text-base leading-7 text-text-base/90">{questao.texto_base.conteudo}</p>
+              {questao.texto_base.fonte && (
+                <p className="mt-3 text-xs text-muted">Fonte: {questao.texto_base.fonte}</p>
+              )}
+            </div>
+          )}
           <div className="mb-6 rounded-lg border border-border bg-bg/40 p-4">
             <p className="text-lg font-medium leading-8 text-text-base md:text-xl">{questao.enunciado}</p>
           </div>

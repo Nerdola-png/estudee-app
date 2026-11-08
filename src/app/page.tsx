@@ -40,13 +40,13 @@ export default function EstudeeLandingPage() {
       <div className="mx-auto grid max-w-[1100px] grid-cols-1 items-center gap-8 px-4 py-12 sm:gap-10 sm:px-8 sm:py-16 lg:grid-cols-2 lg:gap-[60px] lg:px-10 lg:py-[90px]">
         <div>
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/12 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-accent sm:mb-6 sm:text-xs">
-            Curadoria para BM-RS e PC-RS
+            Questões comentadas para concursos públicos
           </div>
           <h1 className="mb-5 font-bebas text-5xl leading-[0.95] tracking-wide text-text-base sm:text-6xl lg:text-7xl">
             ENTENDA O <span className="text-accent">PORQUÊ</span> DE CADA RESPOSTA
           </h1>
           <p className="mb-7 max-w-[480px] text-sm leading-[1.7] text-muted sm:mb-8 sm:text-base">
-            Questões selecionadas para o seu concurso. O comentário original aparece depois que você responde.
+            Questões de provas anteriores para o seu concurso. O comentário aparece depois que você responde.
           </p>
           <div className="mb-7 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:flex-wrap sm:gap-3.5">
             <Link
@@ -63,7 +63,7 @@ export default function EstudeeLandingPage() {
             </Link>
           </div>
           <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted sm:text-xs sm:tracking-[0.16em]">
-            Brigada Militar e Polícia Civil do RS · sem volume vazio
+            Jurídicas · Policiais · Bancárias · Nível médio e superior
           </p>
         </div>
 
@@ -72,7 +72,7 @@ export default function EstudeeLandingPage() {
           <div className="relative">
             <div className="mb-5 flex items-center justify-between gap-3 border-b border-border pb-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">Ciclo de estudo</span>
-              <span className="rounded-full border border-border px-2.5 py-1 text-[10px] text-muted">BM-RS · PC-RS</span>
+              <span className="rounded-full border border-border px-2.5 py-1 text-[10px] text-muted">Concursos públicos</span>
             </div>
             <div className="rounded-xl bg-surface2 p-4 sm:p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">Questão selecionada</p>
@@ -89,7 +89,7 @@ export default function EstudeeLandingPage() {
                 <span className="text-muted" aria-hidden="true">→</span>
                 <span className="rounded-lg border border-border px-3 py-2 text-muted">Correção</span>
                 <span className="text-muted" aria-hidden="true">→</span>
-                <span className="rounded-lg border border-border px-3 py-2 text-muted">Comentário original</span>
+                <span className="rounded-lg border border-border px-3 py-2 text-muted">Comentário</span>
               </div>
             </div>
             <p className="mt-4 flex items-center gap-2 text-xs leading-relaxed text-muted">
@@ -127,12 +127,12 @@ export default function EstudeeLandingPage() {
       {/* Features */}
       <div id="recursos" className="mx-auto max-w-[1100px] px-4 py-14 sm:px-8 sm:py-20 lg:px-10">
         <div className="text-xs font-bold tracking-widest text-accent uppercase mb-2">Recursos</div>
-        <div className="font-bebas text-4xl tracking-wide text-text-base mb-2">MENOS VOLUME, MAIS CONTEXTO</div>
-        <p className="text-muted text-sm mb-10">Um ciclo de estudo construído em torno de questões selecionadas e comentários originais.</p>
+        <div className="font-bebas text-4xl tracking-wide text-text-base mb-2">UM COMENTÁRIO PARA CADA QUESTÃO</div>
+        <p className="text-muted text-sm mb-10">Um ciclo de estudo construído em torno de questões de provas anteriores e comentários que explicam cada resposta.</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
           {[
             { icon: '🎯', title: 'Filtros de estudo', desc: 'Combine as bancas e matérias disponíveis para montar um simulado alinhado ao seu foco.' },
-            { icon: '✍️', title: 'Comentário curado', desc: 'Veja o comentário original da equipe somente depois de responder à questão.' },
+            { icon: '✍️', title: 'Questões comentadas', desc: 'Veja o comentário da questão somente depois de responder.' },
             { icon: '📊', title: 'Desempenho por matéria', desc: 'Acompanhe seus acertos, pontuação e tempo médio a partir dos simulados finalizados.' },
             { icon: '⚖️', title: 'Pontuação transparente', desc: 'Os pontos são calculados no servidor e aparecem somente ao final do simulado.' },
             { icon: '🏆', title: 'Ranking opcional', desc: 'Quem ativa a participação pode aparecer pelo nickname em recortes regional e nacional.' },
@@ -214,7 +214,7 @@ export default function EstudeeLandingPage() {
           <div>
             <Logo size="md" className="block mb-3" />
             <p className="text-sm text-muted leading-relaxed max-w-xs mb-4">
-              Questões selecionadas para concursos e comentários originais feitos por quem já passou.
+              Questões comentadas de provas anteriores para concursos públicos.
             </p>
           </div>
           <div className="flex flex-col gap-2">
@@ -232,7 +232,7 @@ export default function EstudeeLandingPage() {
         </div>
         <div className="flex flex-col items-start justify-between gap-5 border-t border-border pt-6 sm:pt-8 lg:flex-row lg:gap-8">
           <p className="max-w-2xl text-xs leading-relaxed text-muted">
-            <strong className="text-text-base">Aviso:</strong> Os comentários são originais da equipe. A disponibilidade de questões de provas públicas depende dos direitos aplicáveis. Consulte os{' '}
+            <strong className="text-text-base">Aviso:</strong> A disponibilidade de questões de provas públicas depende dos direitos aplicáveis. Consulte os{' '}
             <Link href="/termos" className="text-accent underline">termos</Link> e a{' '}
             <Link href="/privacidade" className="text-accent underline">política de privacidade</Link>.
           </p>

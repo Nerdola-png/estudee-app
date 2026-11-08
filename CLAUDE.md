@@ -4,23 +4,22 @@ Plataforma web de simulados gamificados para concursos públicos, com questões 
 
 Este arquivo é a fonte de verdade para o Claude Code. Se um pedido conflitar com ele, avise antes de implementar. Itens marcados **(em aberto)** não devem ser assumidos: pergunte.
 
-Branch de trabalho: `Secondary` (a `main` está defasada).
 
 ## 1. Documentos e qual vale mais
 
+Este arquivo substitui o antigo `CLAUDE2.md`, o relatório de pontuação e a auditoria de 2026-11-06 (removidos do repositório). As decisões de produto e de segurança desses documentos estão incorporadas nas seções 4, 5 e 7.
+
 1. `supabase/migrations/` — **fonte de verdade do schema e das regras no banco.**
 2. Este arquivo — regras de produto e de código.
-3. `docs/Relatório de mudanças pontuação, sessões, ranking e premium.md` — decisões de produto da pontuação, anti-farm, tamanhos e ranking.
-4. `docs/auditoria-projeto-2026-11-06.md` — achados de segurança e pendências.
-5. `AGENTS.md` — o Next.js deste projeto tem mudanças em relação ao que você conhece. Leia o guia relevante em `node_modules/next/dist/docs/` antes de mexer em rota, middleware ou cache.
+3. `AGENTS.md` — o Next.js deste projeto tem mudanças em relação ao que você conhece. Leia o guia relevante em `node_modules/next/dist/docs/` antes de mexer em rota, middleware ou cache.
 
-**Desatualizados (não seguir):** `src/docs/Estudee_Especificacao_Produto.docx` (ainda fala em "10 pontos por acerto", `respostas`, `logs_acesso`, anúncios) e o antigo `CLAUDE2.md` (texto de MVP "Brigada/PC-RS" e "curadoria de quem passou", com guardrails que contradizem ranking e pontuação).
+**Desatualizado (não seguir):** `src/docs/Estudee_Especificacao_Produto.docx` (ainda fala em "10 pontos por acerto", `respostas`, `logs_acesso`, e anúncios).
 
 ## 2. Produto
 
 O usuário monta um simulado (filtros → tamanho), responde questão por questão, vê correção e comentário logo após cada resposta e, **ao finalizar**, vê seus pontos, acertos e desempenho por matéria. Os pontos alimentam o ranking.
 
-Diferenciais: pontuação variável (dificuldade, tempo, sequência de acertos), ranking local/estadual/nacional e comentário explicativo em cada questão, gerado por um agente de IA.
+Diferenciais: pontuação variável (dificuldade, tempo, sequência de acertos), streak diário de estudo (planejado, ainda não implementado), ranking local/estadual/nacional e comentário explicativo em cada questão, gerado por um agente de IA.
 
 **Planos** (valores e limites vivem no banco, em `planos_config`, nunca no código):
 
@@ -32,6 +31,11 @@ Diferenciais: pontuação variável (dificuldade, tempo, sequência de acertos),
 | Ver a própria posição (limitada) | sim | sim |
 
 Premium vende **recursos adicionais da plataforma**, nunca "acesso a um banco de questões exclusivo" (direitos autorais). Vale para landing, checkout e qualquer texto de UI.
+
+**Regras de texto público (landing, metadata, termos, UI):**
+- A proposta é "questões comentadas de provas anteriores para concursos públicos". O comentário é chamado apenas de "comentário", sem o adjetivo "original".
+- Não é necessário dizer que o comentário é gerado por IA, mas **nenhum texto pode afirmar autoria humana**: evitar "da equipe", "feitos por quem já passou", "por aprovados", "curadoria de especialistas".
+- Não citar BM-RS, PC-RS ou Brigada Militar como foco do produto. Não prometer funcionalidade que o app não tem **e que não esteja planejada**. O streak diário e os filtros por cargo e estado são planejados, então o `LeftPanel` (login e cadastro) pode anunciá-los; anúncios no plano gratuito ainda dependem de decisão.
 
 **Foco de conteúdo:** concursos públicos para carreiras **jurídicas, policiais, bancárias e outras de nível médio e superior**. Não há restrição a um órgão ou estado específico.
 
@@ -61,7 +65,7 @@ mult_sequencia = min(1 + 0,1 × (sequencia − 1), 1,5)
 Regras:
 - `t` é medido **no servidor** (`exibida_em` → resposta). O tempo enviado pelo client é só informativo (`registrar_tempo_ativo`) e **nunca** entra na fórmula.
 - `t_ref_segundos` é por questão (vem do CSV/seed; padrão 30). Evoluir para a mediana real dos usuários é **(em aberto)**.
-- `sequencia` = acertos seguidos dentro da sessão, na ordem de resposta no servidor; zera no erro. **Não confundir com streak diário** (seção 9).
+- `sequencia` = acertos seguidos dentro da sessão, na ordem de resposta no servidor; zera no erro. **Não confundir com o streak diário** (dias consecutivos de estudo; seção 7).
 - O cálculo ocorre uma vez, na primeira resposta; retries devolvem o resultado já gravado.
 - Cada resposta grava os componentes (`pontos_base`, `bonus_tempo`, `mult_sequencia`, `pontos`) e `formula_versao`. Mudar a fórmula = nova versão, nunca sobrescrever a antiga.
 - **Anti-farm:** só o **primeiro acerto de cada questão por usuário** pontua no ranking (`questoes_pontuadas`, PK `user_id + questao_id`).
@@ -102,31 +106,31 @@ Regra: nunca guardar total agregado fora de `ranking_pontos`; estatísticas deri
 
 **Pendências conhecidas:**
 - Logs de acesso com retenção mínima de 5 anos (LGPD/Marco Civil): a tabela `logs_acesso` da `main` não está nas migrations atuais. Recriar e registrar login, início de simulado e encerramento de conta.
-- `abandonar_sessoes_inativas()` existe (30 dias) mas **não está agendada**. Código usa o status `abandonado` (o relatório diz `abandonada`).
+- `abandonar_sessoes_inativas()` existe (30 dias) mas **não está agendada**. Código usa o status `abandonado` (documentação antiga dizia `abandonada`; usar `abandonado`).
 - `config.toml` aponta para `supabase/seed.sql`, que não existe (quebra `db reset`).
 - Teste E2E em navegador com conta real nunca foi feito.
 - Termos comerciais do Pix e licenciamento das questões de bancas.
 - Pipeline do agente de IA ainda não documentado no repositório (formato de entrega, validações, quem estima `peso_dificuldade` e `t_ref_segundos`).
 - 8 vulnerabilidades moderadas só em dev (cadeia do ESLint); manter `npm audit --omit=dev` limpo.
-- Copy desatualizado: `LeftPanel` ainda promete "Sequência de estudos — não deixe o fogo apagar". Conferir landing e checkout contra o que realmente existe.
+- **Streak diário: mantido no produto, mas não implementado.** Foi removido do schema da `Secondary` (não há mais `streak_dias` nem `streak_ultima_data` em `profiles`), embora o `LeftPanel` já o anuncie ("Sequência de estudos — não deixe o fogo apagar"). Regras em aberto na seção 8. Até haver decisão, **o streak não altera a pontuação**.
+- Copy do foco antigo (BM-RS / PC-RS, "curadoria", "comentários da equipe") ainda presente em: lista `CONCURSOS` do cadastro, selo "Curadoria" e bloco "evitando volume vazio" em `/filtros`, trecho sobre comentários em `/termos` e a mensagem de erro do `importar-questoes.mjs`. Landing e metadata do site já foram atualizados.
 
 ## 8. Decisões em aberto
 
 1. Anúncios no plano gratuito (previstos na especificação antiga; o texto antigo do CLAUDE proibia). **Não construir** até decidir.
-2. Streak diário estilo Duolingo (seção 9).
-3. Posição de gratuitos: incluí-los no cálculo e restringir só a visualização é a recomendação do relatório.
+2. Regras do streak diário (estilo Duolingo): o que conta como dia de estudo (responder ao menos uma questão ou finalizar um simulado), fuso horário (sugestão: America/Sao_Paulo), quando a sequência quebra, se há tolerância, se o streak influencia pontos ou ranking, e onde guardar (colunas em `profiles` ou tabela própria).
+3. Posição de gratuitos: incluí-los no cálculo e restringir só a visualização é a recomendação atual.
 4. Período padrão do ranking (geral, semanal ou mensal).
 5. Reresolução de questão: hoje vale 0 no ranking; confirmar se deve valer valor reduzido.
 6. Prazo de abandono e se respostas parciais consolidam pontos.
 7. Origem da dificuldade: fixa no seed ou derivada da taxa de acerto.
 8. Limite diário de questões para gratuitos.
 9. Manter ou não o contador de sequência visível durante o simulado.
-10. Revisão e sinalização dos comentários gerados por IA (seção 11).
+10. Revisão humana dos comentários antes de ativar a questão e canal de reporte de erro (seção 11).
 11. Filtros por carreira, cargo, nível de escolaridade, ano e estado, e o modelo de dados do nível (seção 2).
 
 ## 9. Fora de escopo até decisão
 
-- **Streak diário** (dias consecutivos de estudo): foi removido do schema. "Sequência" no código = acertos seguidos na sessão.
 - Anúncios, comunidade dentro do app, CMS, gateway de pagamento, PWA, apps Android/iOS.
 
 ## 10. Convenções de código
@@ -152,9 +156,10 @@ Regras para o agente e para o app:
 - Questão anulada entra com `status_gabarito = anulada`.
 - Questão ativa exige status de gabarito definitivo (ou anulada) e comentário preenchido; o seed rejeita o CSV inteiro se houver violação.
 
+**Decidido:** a interface não precisa indicar que o comentário é gerado por IA (ver regras de texto público na seção 2).
+
 **Em aberto (decidir antes de abrir para usuários reais):**
 - Haverá revisão humana (total ou por amostragem) dos comentários antes de `ativo = true`? Comentário de IA errado em questão paga é risco de produto.
-- A UI deve indicar que o comentário é gerado por IA? (recomendado, por transparência)
 - Canal para o usuário reportar comentário ou gabarito errado.
 
 **Entrada no banco:** CSV → `npm run seed -- <arquivo.csv>` (usa service role local). Colunas: `codigo`, `foco`, `tipo`, `banca_slug`, `materia_slug`, `cargo_slug`, `carreira_slug`, `estado_prova`, `ano`, `enunciado`, `alternativas`, `gabarito`, `justificativa`, `justificativa_alternativas`, `ativo`, `peso_dificuldade`, `t_ref_segundos`, `status_gabarito`.
@@ -190,6 +195,7 @@ Regras para o agente e para o app:
 - **Justificativa / comentário:** explicação da questão gerada pelo agente de IA
 - **Sessão / simulado:** conjunto de N questões gerado pelos filtros
 - **Sequência:** acertos seguidos dentro de uma sessão (multiplicador de pontos)
+- **Streak diário / sequência de estudos:** dias consecutivos em que o usuário estudou (planejado; não confundir com a sequência de acertos)
 - **Peso de dificuldade:** 1 a 3, define a base de pontos
 - **t_ref:** tempo de referência da questão, usado no bônus de tempo
 - **Anti-farm:** só o primeiro acerto de cada questão pontua

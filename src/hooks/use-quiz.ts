@@ -17,10 +17,17 @@ const resultadoSchema = z.object({
   justificativa_alternativas: z.unknown().nullable(),
 });
 
+const textoBaseSchema = z.object({
+  titulo: z.string().nullable(),
+  conteudo: z.string(),
+  fonte: z.string().nullable(),
+});
+
 const questaoSessaoSchema = z.object({
   id: z.string().uuid(),
   ordem: z.number().int(),
   enunciado: z.string(),
+  texto_base: textoBaseSchema.nullable().optional(),
   alternativas: z.array(alternativaSchema),
   materia: z.string(),
   anulada: z.boolean(),

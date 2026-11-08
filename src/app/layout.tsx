@@ -19,7 +19,7 @@ const bebasNeue = Bebas_Neue({
 
 export const metadata: Metadata = {
   title: "Estudee — Questões para Concursos",
-  description: "Questões comentadas por aprovados para Brigada Militar e PC-RS.",
+  description: "Questões comentadas de provas anteriores para concursos públicos.",
 };
 
 export default function RootLayout({
