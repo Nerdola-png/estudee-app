@@ -45,5 +45,16 @@ export default async function EstudarPage({
     );
   }
 
+  // Verificar se sessão já está finalizada e redirecionar para revisão
+  const { data: sessao, error: sessaoError } = await supabase
+    .from('sessoes')
+    .select('status')
+    .eq('id', sessaoParam)
+    .single();
+
+  if (!sessaoError && sessao?.status === 'finalizado') {
+    redirect(`/revisao?sessao=${encodeURIComponent(sessaoParam)}`);
+  }
+
   return <EstudarClient sessaoId={sessaoParam} />;
 }

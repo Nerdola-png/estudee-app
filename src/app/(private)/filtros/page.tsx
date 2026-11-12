@@ -21,6 +21,7 @@ export default function FiltrosPage() {
   const [bancaIds, setBancaIds] = useState<string[]>([]);
   const [materiaIds, setMateriaIds] = useState<string[]>([]);
   const [quantidade, setQuantidade] = useState('20');
+  const [mostrarGabaritoAgora, setMostrarGabaritoAgora] = useState(true);
 
   const bancaSelecionada = bancaIds
     .map((id) => opcoes?.bancas.find((item) => String(item.id) === id)?.nome)
@@ -41,6 +42,7 @@ export default function FiltrosPage() {
         totalQuestoes: Number(quantidade),
         bancaIds: bancaIds.map(Number),
         materiaIds: materiaIds.map(Number),
+        mostrarGabaritoAgora,
       });
       router.push(`/estudar?sessao=${encodeURIComponent(sessao.sessao_id)}`);
     } catch {
@@ -130,6 +132,46 @@ export default function FiltrosPage() {
                 )}
               </div>
 
+              {/* Gabarito timing preference */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-text-base">Exibição do gabarito e comentário</label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="relative flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-accent/50 has-[:checked]:border-accent has-[:checked]:bg-accent/10">
+                    <input
+                      type="radio"
+                      name="gabaritoTiming"
+                      value="true"
+                      checked={mostrarGabaritoAgora}
+                      onChange={() => setMostrarGabaritoAgora(true)}
+                      className="sr-only peer"
+                    />
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">⚡</span>
+                      <div>
+                        <p className="font-medium text-text-base">Logo após responder</p>
+                        <p className="text-xs text-muted">Veja se acertou e o comentário na hora</p>
+                      </div>
+                    </div>
+                  </label>
+                  <label className="relative flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-accent/50 has-[:checked]:border-accent has-[:checked]:bg-accent/10">
+                    <input
+                      type="radio"
+                      name="gabaritoTiming"
+                      value="false"
+                      checked={!mostrarGabaritoAgora}
+                      onChange={() => setMostrarGabaritoAgora(false)}
+                      className="sr-only peer"
+                    />
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">📋</span>
+                      <div>
+                        <p className="font-medium text-text-base">Somente ao finalizar</p>
+                        <p className="text-xs text-muted">Gabarito e comentário só na tela de revisão</p>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">

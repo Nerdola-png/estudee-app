@@ -1,6 +1,27 @@
 import { z } from 'zod';
 
+// --- Sub-schemas para validações específicas ---
+
+// Validação de código OTP para e-mail
+export const otpCodeSchema = z.object({
+  codigoOtp: z.string().length(6, 'O código deve ter 6 dígitos.'),
+});
+
+// Validação de código SMS para telefone
+export const smsCodeSchema = z.object({
+  codigoSms: z.string().length(6, 'O código deve ter 6 dígitos.'),
+});
+
+// Schema principal do perfil
 export const perfilSchema = z.object({
+  // Dados pessoais
+  telefone: z.string().refine(
+    (value) => value === '' || /^(\d{10,11})$/.test(value.replace(/\D/g, '')),
+    'Informe um telefone válido com DDD (10 ou 11 dígitos).',
+  ),
+  concurso_alvo: z.string().trim().max(100, 'Use até 100 caracteres.'),
+
+  // Ranking (já existentes)
   nickname: z.string().trim().max(24, 'Use até 24 caracteres.').refine(
     (value) => value === '' || /^[A-Za-z0-9_]{3,24}$/.test(value),
     'Use de 3 a 24 letras, números ou sublinhados.',
@@ -32,3 +53,32 @@ export const perfilSchema = z.object({
 });
 
 export type PerfilData = z.infer<typeof perfilSchema>;
+export type OtpCodeData = z.infer<typeof otpCodeSchema>;
+export type SmsCodeData = z.infer<typeof smsCodeSchema>;
+
+// Lista de concursos comuns para sugestões
+export const CONCURSOS_COMUNS = [
+  'Concursos Federais',
+  'Concursos Estaduais',
+  'Concursos Municipais',
+  'Vestibulares',
+  'OAB',
+  'Enem',
+  'Fuvest',
+  'Unicamp',
+  'ITA',
+  'IME',
+  'Banco do Brasil',
+  'Caixa Econômica',
+  'BNDES',
+  'IBAMA',
+  'ICMBio',
+  'PF',
+  'PRF',
+  'Receita Federal',
+  'Fiscal Tributário',
+  'Magistério',
+  'Saúde',
+  'TI',
+  'Outro',
+];

@@ -11,7 +11,7 @@ export default async function PerfilPage() {
   const [perfilResult, planoResult] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id,nome,sobrenome,cidade,estado,nickname,ranking_opt_in,uf,municipio_ibge')
+      .select('id,nome,sobrenome,cidade,estado,telefone,concurso_alvo,avatar_url,nickname,ranking_opt_in,uf,municipio_ibge')
       .eq('id', user.id)
       .single(),
     supabase.rpc('plano_atual_usuario'),

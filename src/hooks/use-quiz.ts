@@ -12,15 +12,21 @@ const alternativaSchema = z.object({
 const resultadoSchema = z.object({
   acertou: z.boolean(),
   anulada: z.boolean(),
-  gabarito: z.string().nullable(),
-  justificativa: z.string().nullable(),
-  justificativa_alternativas: z.unknown().nullable(),
+  gabarito: z.string().nullable().optional(),
+  justificativa: z.string().nullable().optional(),
+  justificativa_alternativas: z.unknown().nullable().optional(),
+});
+
+const imagemSchema = z.object({
+  path: z.string(),
+  alt: z.string(),
 });
 
 const textoBaseSchema = z.object({
   titulo: z.string().nullable(),
   conteudo: z.string(),
   fonte: z.string().nullable(),
+  imagens: z.array(imagemSchema).default([]),
 });
 
 const questaoSessaoSchema = z.object({
@@ -28,6 +34,7 @@ const questaoSessaoSchema = z.object({
   ordem: z.number().int(),
   enunciado: z.string(),
   texto_base: textoBaseSchema.nullable().optional(),
+  imagens: z.array(imagemSchema).default([]),
   alternativas: z.array(alternativaSchema),
   materia: z.string(),
   anulada: z.boolean(),
@@ -42,6 +49,11 @@ const sessaoSchema = z.object({
   acertos: z.number().int(),
   started_at: z.string(),
   tempo_ativo_segundos: z.number().int(),
+  filtros: z.object({
+    banca_ids: z.array(z.number()).optional(),
+    materia_ids: z.array(z.number()).optional(),
+    mostrar_gabarito_agora: z.boolean().optional(),
+  }).optional().default({}),
   questoes: z.array(questaoSessaoSchema),
 });
 
@@ -108,15 +120,18 @@ export function useIniciarSessao() {
       totalQuestoes: number;
       bancaIds: number[];
       materiaIds: number[];
+      mostrarGabaritoAgora?: boolean;
     }) => {
       const { data, error } = await supabase.rpc('iniciar_sessao', {
         p_total_questoes: input.totalQuestoes,
         p_banca_ids: input.bancaIds.length > 0 ? input.bancaIds : undefined,
         p_materia_ids: input.materiaIds.length > 0 ? input.materiaIds : undefined,
+        p_mostrar_gabarito_agora: input.mostrarGabaritoAgora ?? true,
       });
 
       if (error) throw error;
-      return novaSessaoSchema.parse(data);
+      // A função retorna diretamente o uuid como string
+      return { sessao_id: data as string, total_questoes: input.totalQuestoes };
     },
   });
 }
@@ -152,8 +167,8 @@ export function useResponderQuestao(sessaoId: string) {
       const { data, error } = await supabase.rpc('responder_questao', {
         p_sessao_id: sessaoId,
         p_questao_id: input.questaoId,
-        p_resposta: input.resposta,
-        p_tempo_ativo_segundos: input.tempoAtivoSegundos,
+        p_resposta_usuario: input.resposta,
+        p_tempo_resposta_ms: input.tempoAtivoSegundos * 1000,
       });
 
       if (error) throw error;
@@ -261,6 +276,48 @@ export function useMinhaPosicao(
 
       if (error) throw error;
       return posicaoSchema.parse(data);
+    },
+  });
+}
+
+// Revisão schemas
+const revisaoQuestaoSchema = z.object({
+  id: z.string().uuid(),
+  ordem: z.number().int(),
+  enunciado: z.string(),
+  texto_base: textoBaseSchema.nullable().optional(),
+  imagens: z.array(imagemSchema).default([]),
+  alternativas: z.array(alternativaSchema),
+  materia: z.string(),
+  anulada: z.boolean(),
+  resposta_usuario: z.string().nullable(),
+  gabarito: z.string(),
+  justificativa: z.string().nullable(),
+  justificativa_alternativas: z.unknown().nullable(),
+  acertou: z.boolean().nullable(),
+});
+
+const revisaoSchema = z.object({
+  sessao_id: z.string().uuid(),
+  questoes: z.array(revisaoQuestaoSchema),
+});
+
+export type RevisaoQuestao = z.infer<typeof revisaoQuestaoSchema>;
+export type RevisaoSessao = z.infer<typeof revisaoSchema>;
+
+export function useRevisao(sessaoId: string) {
+  const supabase = createClient();
+
+  return useQuery({
+    queryKey: ['revisao', sessaoId],
+    enabled: Boolean(sessaoId),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('obter_revisao', {
+        p_sessao_id: sessaoId,
+      });
+
+      if (error) throw error;
+      return revisaoSchema.parse(data);
     },
   });
 }

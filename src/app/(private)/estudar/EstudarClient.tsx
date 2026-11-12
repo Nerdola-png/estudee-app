@@ -183,7 +183,7 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
       } catch {
         return;
       }
-      router.push(`/resultado?sessao=${encodeURIComponent(sessaoId)}`);
+      router.push(`/revisao?sessao=${encodeURIComponent(sessaoId)}`);
       return;
     }
 
@@ -344,7 +344,7 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
                 className="bg-accent text-bg hover:bg-accent2 disabled:opacity-60"
               >
                 {indiceAtual === totalQuestoes - 1
-                  ? finalizarSessao.isPending ? 'Finalizando…' : 'Ver resultado'
+                  ? finalizarSessao.isPending ? 'Finalizando…' : 'Finalizar e revisar'
                   : 'Próxima questão'}
               </Button>
             )}
