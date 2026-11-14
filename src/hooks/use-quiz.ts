@@ -130,8 +130,7 @@ export function useIniciarSessao() {
       });
 
       if (error) throw error;
-      // A função retorna diretamente o uuid como string
-      return { sessao_id: data as string, total_questoes: input.totalQuestoes };
+      return novaSessaoSchema.parse(data);
     },
   });
 }
@@ -167,8 +166,8 @@ export function useResponderQuestao(sessaoId: string) {
       const { data, error } = await supabase.rpc('responder_questao', {
         p_sessao_id: sessaoId,
         p_questao_id: input.questaoId,
-        p_resposta_usuario: input.resposta,
-        p_tempo_resposta_ms: input.tempoAtivoSegundos * 1000,
+        p_resposta: input.resposta,
+        p_tempo_ativo_segundos: input.tempoAtivoSegundos,
       });
 
       if (error) throw error;

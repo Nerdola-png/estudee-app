@@ -29,6 +29,10 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
   const registrarTempoAtivo = registrarTempo.mutateAsync;
   const finalizarSessao = useFinalizarSessao(sessaoId);
   const statusSessao = sessao?.status;
+  
+  // Preferência do simulado: gabarito e comentário agora ou só na revisão.
+  const mostrarGabaritoAgora = sessao?.filtros?.mostrar_gabarito_agora ?? true;
+  
   const [indiceAtual, setIndiceAtual] = useState(0);
   const [respostaSelecionada, setRespostaSelecionada] = useState<string | null>(null);
   const [tempoAtivoSegundos, setTempoAtivoSegundos] = useState(0);
@@ -258,10 +262,15 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
           <div className="space-y-3">
             {questao.alternativas.map((alternativa) => {
               const selected = alternativaSelecionada === alternativa.key;
+              // Sem gabarito (preferência "somente ao finalizar"), a alternativa
+              // não pode ser marcada como errada: só sabemos o acerto depois.
+              const gabaritoConhecido = Boolean(respostaAtual?.gabarito);
               const correct = Boolean(
                 respostaAtual && (respostaAtual.anulada ? selected : alternativa.key === respostaAtual.gabarito)
               );
-              const wrong = Boolean(respostaAtual && selected && !correct);
+              const wrong = Boolean(
+                respostaAtual && selected && !correct && (gabaritoConhecido || respostaAtual.anulada)
+              );
 
               return (
                 <button
@@ -296,7 +305,7 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
             })}
           </div>
 
-          {respostaAtual && (
+          {respostaAtual && mostrarGabaritoAgora && (
             <div className="mt-6 rounded-lg border border-border bg-bg/50 p-4">
               <div className="mb-2 flex items-center gap-2">
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
@@ -311,6 +320,11 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
                 <span className="text-xs uppercase tracking-[0.18em] text-muted">Comentário</span>
               </div>
               <p className="text-sm leading-7 text-text-base">{respostaAtual.justificativa ?? 'Sem comentário disponível.'}</p>
+            </div>
+          )}
+          {respostaAtual && !mostrarGabaritoAgora && (
+            <div className="mt-6 rounded-lg border border-border bg-bg/50 p-4">
+              <span className="text-sm text-muted">Resposta registrada. Gabarito e comentário serão exibidos na revisão.</span>
             </div>
           )}
 

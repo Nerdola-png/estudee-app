@@ -102,7 +102,9 @@ Regra: nunca guardar total agregado fora de `ranking_pontos`; estatísticas deri
 
 ## 7. Estado atual (atualize ao concluir cada fatia)
 
-**Pronto:** login, cadastro (com avatar), recuperação e redefinição de senha, filtros com seleção múltipla de bancas e matérias, tamanhos por plano, simulado com retomada e contador de tempo ativo, resultado, dashboard com dados reais, estatísticas por matéria, perfil (nickname, opt-in, UF/município), ranking via RPC, página de Premium (Pix manual, informativa), `/termos` e `/privacidade`, scripts de seed e de ativação Pix, teste SQL de pontuação e acesso.
+**Pronto:** login, cadastro (com avatar), recuperação e redefinição de senha, filtros com seleção múltipla de bancas e matérias, tamanhos por plano, simulado com retomada e contador de tempo ativo, resultado, dashboard com dados reais, estatísticas por matéria, perfil (nickname, opt-in, UF/município), ranking via RPC, página de Premium (Pix manual, informativa), `/termos` e `/privacidade`, scripts de seed e de ativação Pix, testes SQL de pontuação e acesso.
+
+**PREFERÊNCIA DE GABARITO (corrigido em 13/11):** `responder_questao` foi restaurada a partir da versão pontuada de 07/11 (`20261113000000` corrige a `20261112000000`, que já estava aplicada em produção e criava a RPC com colunas inexistentes). Vale de novo: pontos pelo `calcular_pontos` (base, bônus de tempo e multiplicador de sequência), tempo medido no servidor, anti-farm por `questoes_pontuadas` e idempotência (retry devolve o resultado gravado; trocar a resposta é bloqueado). A única novidade é `mostrar_gabarito_agora`, guardada em `sessoes.filtros`: quando falsa, `responder_questao` e `carregar_sessao` não devolvem gabarito/comentário — só a tela de revisão (`obter_revisao`) mostra. `iniciar_sessao` ganhou o parâmetro `p_mostrar_gabarito_agora` e voltou a validar plano e filtros.
 
 **Pendências conhecidas:**
 - Logs de acesso com retenção mínima de 5 anos (LGPD/Marco Civil): a tabela `logs_acesso` da `main` não está nas migrations atuais. Recriar e registrar login, início de simulado e encerramento de conta.
@@ -175,6 +177,7 @@ Regras para o agente e para o app:
 - `npx supabase gen types typescript > src/types/database.ts` — regenerar tipos
 - `npx supabase db lint --schema public` — validar o schema
 - `npx supabase db query --file supabase/tests/scoring_and_access.sql` — testes SQL de pontuação e grants
+- `npx supabase db query --file supabase/tests/responder_questao_scoring.sql` — testes SQL de `responder_questao` (pontuação no servidor, idempotência, anti-farm, preferência de gabarito, revisão e grants)
 - `npm run seed -- <arquivo.csv>` — importar questões
 - `npm run pix:ativar -- <user_id> <dias> <operador_id>` — ativar Premium após confirmar o Pix
 

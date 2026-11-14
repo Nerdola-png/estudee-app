@@ -40,7 +40,7 @@ begin
     raise exception 'Authenticated users can read score columns directly.';
   end if;
 
-  if has_function_privilege('anon', 'public.iniciar_sessao(integer,smallint[],smallint[])', 'EXECUTE') then
+  if has_function_privilege('anon', 'public.iniciar_sessao(integer,smallint[],smallint[],boolean)', 'EXECUTE') then
     raise exception 'Anonymous users can execute iniciar_sessao.';
   end if;
 
