@@ -416,7 +416,37 @@ BEGIN
     END IF;
 
     ---------------------------------------------------------------------------
-    -- 10. Limpeza: o banco de dados nao deve ficar com dados de teste.
+    -- 10. Sem overloads: o PostgREST nao consegue desambiguar funcoes com os
+    --     mesmos nomes de parametro e tipos diferentes (PGRST203), o que quebra
+    --     a chamada de iniciar_sessao. Nenhuma RPC do app pode ter mais de uma
+    --     assinatura.
+    ---------------------------------------------------------------------------
+    IF EXISTS (
+        SELECT 1
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public'
+          AND p.proname IN (
+              'iniciar_sessao',
+              'carregar_sessao',
+              'responder_questao',
+              'obter_revisao',
+              'finalizar_sessao',
+              'obter_resultado',
+              'registrar_tempo_ativo',
+              'obter_sessao_em_andamento',
+              'obter_estatisticas',
+              'obter_ranking',
+              'obter_minha_posicao'
+          )
+        GROUP BY p.proname
+        HAVING count(*) > 1
+    ) THEN
+        RAISE EXCEPTION 'existe overload de RPC do app: o PostgREST falha com PGRST203';
+    END IF;
+
+    ---------------------------------------------------------------------------
+    -- 11. Limpeza: o banco de dados nao deve ficar com dados de teste.
     ---------------------------------------------------------------------------
     DELETE FROM public.questoes_pontuadas WHERE user_id = v_user_id;
     DELETE FROM public.sessao_questoes

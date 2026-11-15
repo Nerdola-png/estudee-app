@@ -29,9 +29,11 @@
 
 -- 1. iniciar_sessao: mantém as regras da versão pontuada (plano, filtros,
 --    questões elegíveis) e passa a receber a preferência do simulado.
---    A assinatura ganha um quarto parâmetro; a versão antiga é removida para
---    não deixar duas overloads ambíguas para o PostgREST.
+--    Todas as assinaturas anteriores são removidas: o PostgREST não consegue
+--    desambiguar overloads com os mesmos nomes de parâmetro e tipos de array
+--    diferentes (PGRST203), então só pode existir uma `iniciar_sessao`.
 DROP FUNCTION IF EXISTS public.iniciar_sessao(integer, smallint[], smallint[]);
+DROP FUNCTION IF EXISTS public.iniciar_sessao(integer, integer[], integer[], boolean);
 
 CREATE OR REPLACE FUNCTION public.iniciar_sessao(
     p_total_questoes integer,
