@@ -39,6 +39,7 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
   const [erroTempo, setErroTempo] = useState<string | null>(null);
   const tempoAtivoRef = useRef(0);
   const persistirTempoRef = useRef<() => Promise<void>>(async () => undefined);
+  const statusInicialRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!sessao) return;
@@ -46,6 +47,15 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
     tempoAtivoRef.current = Math.max(tempoAtivoRef.current, sessao.tempo_ativo_segundos);
     setTempoAtivoSegundos(tempoAtivoRef.current);
   }, [sessao?.tempo_ativo_segundos, sessao]);
+
+  useEffect(() => {
+    if (!statusSessao || statusInicialRef.current !== null) return;
+
+    statusInicialRef.current = statusSessao;
+    if (statusSessao === 'finalizado') {
+      router.replace(`/revisao?sessao=${encodeURIComponent(sessaoId)}`);
+    }
+  }, [router, sessaoId, statusSessao]);
 
   useEffect(() => {
     if (statusSessao !== 'em_andamento') return;
@@ -187,7 +197,7 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
       } catch {
         return;
       }
-      router.push(`/revisao?sessao=${encodeURIComponent(sessaoId)}`);
+      router.replace(`/revisao?sessao=${encodeURIComponent(sessaoId)}`);
       return;
     }
 

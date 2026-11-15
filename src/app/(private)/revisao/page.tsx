@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { revisaoSchema } from '@/schema/revisao';
 import RevisaoClient from './RevisaoClient';
 
 function SemRevisao({ motivo }: { motivo: string }) {
@@ -32,16 +33,20 @@ export default async function RevisaoPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: sessao, error } = await supabase
-    .from('sessoes')
-    .select('id')
-    .eq('id', sessaoId)
-    .eq('user_id', user.id)
-    .single();
+  // A tabela sessoes não possui SELECT para o papel authenticated. A RPC
+  // segura valida o proprietário e o status da sessao no servidor.
+  const { data, error } = await supabase.rpc('obter_revisao', {
+    p_sessao_id: sessaoId,
+  });
 
-  if (error || !sessao) {
-    return <SemRevisao motivo="Você não tem permissão para visualizar esta revisão." />;
+  if (error) {
+    return <SemRevisao motivo="Não foi possível carregar a revisão desta sessão." />;
   }
 
-  return <RevisaoClient sessaoId={sessaoId} />;
+  const parsed = revisaoSchema.safeParse(data);
+  if (!parsed.success) {
+    return <SemRevisao motivo="Não foi possível carregar a revisão desta sessão." />;
+  }
+
+  return <RevisaoClient sessaoId={sessaoId} revisao={parsed.data} />;
 }

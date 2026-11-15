@@ -1,49 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useRevisao } from '@/hooks/use-quiz';
+import type { RevisaoSessao } from '@/schema/revisao';
 
-function formatarTempo(segundos: number) {
-  const horas = Math.floor(segundos / 3600);
-  const minutos = Math.floor((segundos % 3600) / 60);
-  const segundosRestantes = segundos % 60;
+type RevisaoClientProps = {
+  sessaoId: string;
+  revisao: RevisaoSessao;
+};
 
-  return horas > 0
-    ? `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundosRestantes.toString().padStart(2, '0')}`
-    : `${minutos.toString().padStart(2, '0')}:${segundosRestantes.toString().padStart(2, '0')}`;
-}
-
-function SemRevisao({ motivo }: { motivo: string }) {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-bg px-4 py-8">
-      <div className="max-w-md rounded-xl border border-border bg-surface p-6 text-center">
-        <h1 className="mb-2 font-bebas text-4xl text-text-base">Revisão indisponível</h1>
-        <p role="alert" className="mb-5 text-sm text-muted">{motivo}</p>
-        <Link href="/dashboard" className="inline-flex rounded-lg bg-accent px-5 py-3 text-sm font-semibold text-bg">
-          Voltar ao painel
-        </Link>
-      </div>
-    </main>
-  );
-}
-
-export default function RevisaoClient({ sessaoId }: { sessaoId: string }) {
-  const { data: revisao, isPending, error } = useRevisao(sessaoId);
-
-  if (isPending) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-bg px-4 py-8">
-        <div className="rounded-xl border border-border bg-surface px-6 py-5 text-sm text-muted">
-          Carregando revisão…
-        </div>
-      </main>
-    );
-  }
-
-  if (error || !revisao) {
-    return <SemRevisao motivo="Não foi possível carregar a revisão desta sessão." />;
-  }
-
+export default function RevisaoClient({ sessaoId, revisao }: RevisaoClientProps) {
   const totalAcertos = revisao.questoes.filter((q) => q.acertou).length;
   const totalQuestoes = revisao.questoes.length;
   const percentual = Math.round((totalAcertos / totalQuestoes) * 100);

@@ -40,6 +40,16 @@ begin
     raise exception 'Authenticated users can read score columns directly.';
   end if;
 
+  -- A tela de revisao deve usar a RPC obter_revisao. Ler sessoes
+  -- diretamente falha porque o papel authenticated nao possui esse SELECT.
+  if has_table_privilege('authenticated', 'public.sessoes', 'SELECT') then
+    raise exception 'Authenticated users can read sessions directly.';
+  end if;
+
+  if not has_function_privilege('authenticated', 'public.obter_revisao(uuid)', 'EXECUTE') then
+    raise exception 'Authenticated users cannot execute obter_revisao.';
+  end if;
+
   if has_function_privilege('anon', 'public.iniciar_sessao(integer,smallint[],smallint[],boolean)', 'EXECUTE') then
     raise exception 'Anonymous users can execute iniciar_sessao.';
   end if;
