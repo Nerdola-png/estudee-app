@@ -4,7 +4,7 @@ import { Logo } from '@/app/components/Logo';
 export default function EstudeeLandingPage() {
   return (
     <>
-      <nav className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-4 py-3 backdrop-blur-[10px] sm:px-8 sm:py-[18px] lg:px-10">
+      <nav className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-4 py-3 backdrop-blur-[10px] sm:px-8 sm:py-4.5 lg:px-10">
         <Logo size="md" />
         <div className="hidden items-center gap-7 md:flex">
           {[
@@ -34,19 +34,19 @@ export default function EstudeeLandingPage() {
         </div>
       </nav>
 
-      <h2 className="sr-only">Estudee — questões comentadas para concursos públicos</h2>
+      <h2 className="sr-only">Estudee</h2>
 
       {/* Hero */}
-      <div className="mx-auto grid max-w-[1100px] grid-cols-1 items-center gap-8 px-4 py-12 sm:gap-10 sm:px-8 sm:py-16 lg:grid-cols-2 lg:gap-[60px] lg:px-10 lg:py-[90px]">
+      <div className="mx-auto grid max-w-275 grid-cols-1 items-center gap-8 px-4 py-12 sm:gap-10 sm:px-8 sm:py-16 lg:grid-cols-2 lg:gap-15 lg:px-10 lg:py-22.5">
         <div>
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/12 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-accent sm:mb-6 sm:text-xs">
-            Questões comentadas para concursos públicos
+            Simulados com questões reais
           </div>
           <h1 className="mb-5 font-bebas text-5xl leading-[0.95] tracking-wide text-text-base sm:text-6xl lg:text-7xl">
             ENTENDA O <span className="text-accent">PORQUÊ</span> DE CADA RESPOSTA
           </h1>
-          <p className="mb-7 max-w-[480px] text-sm leading-[1.7] text-muted sm:mb-8 sm:text-base">
-            Questões de provas anteriores para o seu concurso. O comentário aparece depois que você responde.
+          <p className="mb-7 max-w-120 text-sm leading-[1.7] text-muted sm:mb-8 sm:text-base">
+            Questões de provas anteriores para o seu concurso, exame ou vestibular.
           </p>
           <div className="mb-7 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:flex-wrap sm:gap-3.5">
             <Link
@@ -63,7 +63,7 @@ export default function EstudeeLandingPage() {
             </Link>
           </div>
           <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted sm:text-xs sm:tracking-[0.16em]">
-            Jurídicas · Policiais · Bancárias · Nível médio e superior
+            Carreiras Jurídicas · Policiais · Bancárias · Vestibulares · OAB · ENEM
           </p>
         </div>
 
@@ -72,12 +72,12 @@ export default function EstudeeLandingPage() {
           <div className="relative">
             <div className="mb-5 flex items-center justify-between gap-3 border-b border-border pb-4">
               <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">Ciclo de estudo</span>
-              <span className="rounded-full border border-border px-2.5 py-1 text-[10px] text-muted">Concursos públicos</span>
+              <span className="rounded-full border border-border px-2.5 py-1 text-[10px] text-muted">Questões Reais</span>
             </div>
             <div className="rounded-xl bg-surface2 p-4 sm:p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">Questão selecionada</p>
               <p className="mt-2 max-w-sm font-bebas text-2xl leading-tight tracking-wide text-text-base sm:text-3xl">
-                Você responde primeiro. O comentário vem depois.
+                Acompanhe suas resposta em tempo real, ou simule uma prova completa!
               </p>
               <div className="mt-5 space-y-2" aria-hidden="true">
                 <div className="h-2 w-full rounded bg-border" />
@@ -94,7 +94,7 @@ export default function EstudeeLandingPage() {
             </div>
             <p className="mt-4 flex items-center gap-2 text-xs leading-relaxed text-muted">
               <span aria-hidden="true">🔒</span>
-              Gabarito e comentário só aparecem depois da sua resposta.
+              Questões de provas anteriores para o seu concurso, exame ou vestibular.
             </p>
           </div>
         </div>
@@ -103,14 +103,14 @@ export default function EstudeeLandingPage() {
       <div className="mx-4 h-px bg-border sm:mx-8 lg:mx-10" />
 
       {/* Como funciona */}
-      <div id="como-funciona" className="mx-auto max-w-[1100px] px-4 py-14 sm:px-8 sm:py-20 lg:px-10">
+      <div id="como-funciona" className="mx-auto max-w-275 px-4 py-14 sm:px-8 sm:py-20 lg:px-10">
         <div className="text-xs font-bold tracking-widest text-accent uppercase mb-2">Como funciona</div>
         <div className="font-bebas text-4xl tracking-wide text-text-base mb-10">UM CICLO DE ESTUDO COM FEEDBACK</div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-6">
           {[
-            { n: 1, title: 'Crie sua conta', desc: 'Defina seu concurso e organize seus dados de estudo' },
+            { n: 1, title: 'Crie sua conta', desc: 'Defina seu foco e organize sua rotina de estudo' },
             { n: 2, title: 'Escolha o foco', desc: 'Combine bancas, matérias e tamanho do simulado' },
-            { n: 3, title: 'Responda', desc: 'A correção e o comentário aparecem depois da sua resposta' },
+            { n: 3, title: 'Responda', desc: 'Corrija suas respostas e tenha acesso aos comentários' },
             { n: 4, title: 'Veja o resultado', desc: 'Acompanhe seus acertos por matéria e sua pontuação' },
           ].map(({ n, title, desc }) => (
             <div key={n} className="bg-surface border border-border rounded-xl p-5">
@@ -125,18 +125,16 @@ export default function EstudeeLandingPage() {
       <div className="mx-4 h-px bg-border sm:mx-8 lg:mx-10" />
 
       {/* Features */}
-      <div id="recursos" className="mx-auto max-w-[1100px] px-4 py-14 sm:px-8 sm:py-20 lg:px-10">
+      <div id="recursos" className="mx-auto max-w-275 px-4 py-14 sm:px-8 sm:py-20 lg:px-10">
         <div className="text-xs font-bold tracking-widest text-accent uppercase mb-2">Recursos</div>
-        <div className="font-bebas text-4xl tracking-wide text-text-base mb-2">UM COMENTÁRIO PARA CADA QUESTÃO</div>
+        <div className="font-bebas text-4xl tracking-wide text-text-base mb-2">QUESTÕES QUE JÁ CAÍRAM, COM COMENTÁRIOS</div>
         <p className="text-muted text-sm mb-10">Um ciclo de estudo construído em torno de questões de provas anteriores e comentários que explicam cada resposta.</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
           {[
             { icon: '🎯', title: 'Filtros de estudo', desc: 'Combine as bancas e matérias disponíveis para montar um simulado alinhado ao seu foco.' },
-            { icon: '✍️', title: 'Questões comentadas', desc: 'Veja o comentário da questão somente depois de responder.' },
+            { icon: '✍️', title: 'Questões comentadas', desc: 'Veja o comentário da questão ao final do simulado, ou em tempo real.' },
             { icon: '📊', title: 'Desempenho por matéria', desc: 'Acompanhe seus acertos, pontuação e tempo médio a partir dos simulados finalizados.' },
-            { icon: '⚖️', title: 'Pontuação transparente', desc: 'Os pontos são calculados no servidor e aparecem somente ao final do simulado.' },
-            { icon: '🏆', title: 'Ranking opcional', desc: 'Quem ativa a participação pode aparecer pelo nickname em recortes regional e nacional.' },
-            { icon: '🔒', title: 'Privacidade por padrão', desc: 'E-mail, telefone e nome civil não aparecem no ranking.' },
+            { icon: '🏆', title: 'Ranking', desc: 'Ative sua participação no ranking para acompanhar os recortes regional e nacional.' },
           ].map(({ icon, title, desc }) => (
             <div key={title} className="bg-surface border border-border rounded-xl p-5">
               <div className="text-3xl mb-3">{icon}</div>
@@ -150,8 +148,8 @@ export default function EstudeeLandingPage() {
       <div className="mx-4 h-px bg-border sm:mx-8 lg:mx-10" />
 
       {/* Planos + Ranking */}
-      <div className="mx-auto max-w-[1100px] px-4 py-14 sm:px-8 sm:py-20 lg:px-10">
-        <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-[60px]">
+      <div className="mx-auto max-w-275 px-4 py-14 sm:px-8 sm:py-20 lg:px-10">
+        <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-15">
           <div id="planos">
             <div className="text-xs font-bold tracking-widest text-accent uppercase mb-2">Planos</div>
             <div className="font-bebas text-4xl tracking-wide text-text-base mb-2">ESCOLHA SEU RITMO</div>
@@ -197,7 +195,7 @@ export default function EstudeeLandingPage() {
           <div id="ranking">
             <div className="text-xs font-bold tracking-widest text-accent uppercase mb-2">Ranking</div>
             <div className="font-bebas text-4xl tracking-wide text-text-base mb-2">RANKING COM PARTICIPAÇÃO OPCIONAL</div>
-            <p className="text-sm text-muted mb-6">A lista real é formada por quem ativou a participação no perfil. O acesso completo requer Premium.</p>
+            <p className="text-sm text-muted mb-6">A lista real é formada por quem ativou a participação no perfil. O acesso completo requer conta Premium.</p>
             <div className="rounded-xl border border-border bg-surface p-6">
               <p className="text-sm font-medium text-text-base">Ainda não há uma prévia pública.</p>
               <p className="mt-2 text-sm leading-6 text-muted">Não exibimos nomes ou pontuações fictícias. O ranking será montado com dados reais dos participantes opt-in.</p>
@@ -209,12 +207,12 @@ export default function EstudeeLandingPage() {
       <div className="mx-4 h-px bg-border sm:mx-8 lg:mx-10" />
 
       {/* Footer */}
-      <footer id="legal" className="mx-auto max-w-[1100px] px-4 py-12 sm:px-8 sm:py-16 lg:px-10">
+      <footer id="legal" className="mx-auto max-w-275 px-4 py-12 sm:px-8 sm:py-16 lg:px-10">
         <div className="mb-10 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] lg:gap-16">
           <div>
             <Logo size="md" className="block mb-3" />
             <p className="text-sm text-muted leading-relaxed max-w-xs mb-4">
-              Questões comentadas de provas anteriores para concursos públicos.
+              Questões comentadas de provas anteriores para concursos públicos, exames nacionais e vestibulares.
             </p>
           </div>
           <div className="flex flex-col gap-2">
@@ -236,7 +234,7 @@ export default function EstudeeLandingPage() {
             <Link href="/termos" className="text-accent underline">termos</Link> e a{' '}
             <Link href="/privacidade" className="text-accent underline">política de privacidade</Link>.
           </p>
-          <div className="flex-shrink-0 text-left text-xs text-muted lg:text-right">
+          <div className="shrink-0 text-left text-xs text-muted lg:text-right">
             <p>© 2026 Estudee</p>
             <p>Todos os direitos reservados.</p>
           </div>

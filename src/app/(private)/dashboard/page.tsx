@@ -62,7 +62,7 @@ export default async function DashboardPage() {
 
         <nav className="flex flex-1 flex-row gap-0.5 overflow-x-auto md:flex-col">
           {[
-            { href: '/dashboard', icon: '⊞', label: 'Início' },
+            { href: '/dashboard', icon: '🏠', label: 'Início' },
             { href: '/filtros', icon: '🎯', label: 'Novo simulado' },
             { href: '/estatisticas', icon: '📊', label: 'Estatísticas' },
             { href: '/ranking', icon: '🏆', label: 'Ranking' },
@@ -91,7 +91,7 @@ export default async function DashboardPage() {
 
         <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
           <Link href="/perfil" className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2.5 no-underline hover:bg-surface2">
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-accent/30 bg-accent/15 text-[13px] font-bold text-accent">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-accent/30 bg-accent/15 text-[13px] font-bold text-accent">
               {iniciais || 'U'}
             </span>
             <span className="min-w-0">
