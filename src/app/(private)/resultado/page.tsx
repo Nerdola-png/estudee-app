@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import RodapeLegal from '@/app/components/RodapeLegal';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 
@@ -18,6 +19,21 @@ const resultadoSchema = z.object({
     total: z.number().int(),
     percentual: z.number(),
     tempo_medio_segundos: z.number(),
+  })),
+  questoes: z.array(z.object({
+    id: z.string().uuid(),
+    ordem: z.number().int(),
+    enunciado: z.string(),
+    materia: z.string(),
+    banca: z.string().nullable(),
+    ano: z.number().int().nullable(),
+    cargo: z.string().nullable(),
+    estado_prova: z.string().nullable(),
+    anulada: z.boolean(),
+    resposta_usuario: z.string().nullable(),
+    acertou: z.boolean().nullable(),
+    gabarito: z.string().nullable(),
+    justificativa: z.string().nullable(),
   })),
 });
 
@@ -140,6 +156,54 @@ export default async function ResultadoPage({
             </div>
           )}
         </section>
+
+        {resultado.questoes.length > 0 && (
+          <section className="mt-10 rounded-xl border border-border bg-surface p-5 md:p-7">
+            <h2 className="mb-5 text-xl font-semibold text-text-base">
+              Questões respondidas
+            </h2>
+            <div className="space-y-3">
+              {resultado.questoes.map((q) => (
+                <div
+                  key={q.id}
+                  className="rounded-lg border border-border bg-bg/40 p-4"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">
+                        Questão {q.ordem}
+                      </span>
+                      {q.banca || q.ano || q.cargo || q.estado_prova && (
+                        <span className="text-xs font-medium text-muted">
+                          {q.banca}{q.banca && q.ano ? ' · ' : null}
+                          {q.ano}{q.ano && (q.cargo || q.estado_prova) ? ' · ' : null}
+                          {q.cargo}{q.cargo && q.estado_prova ? ' · ' : null}
+                          {q.estado_prova}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
+                      q.acertou ? 'bg-green/15 text-green' : 'bg-red-500/15 text-red-400'
+                    }`}>
+                      {q.anulada && !q.acertou
+                        ? 'Anulada · acerto computado'
+                        : q.acertou
+                          ? 'Acertou'
+                          : `Errou · correta ${q.gabarito}`}
+                    </span>
+                  </div>
+                  <p className="text-sm leading-6 text-text-base/90">{q.enunciado}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {q.materia}
+                    {q.resposta_usuario ? ` · sua resposta: ${q.resposta_usuario}` : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <RodapeLegal />
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
           <Link href="/filtros" className="inline-flex items-center justify-center rounded-lg border border-border px-5 py-3 text-sm font-medium text-text-base transition-colors hover:border-muted">

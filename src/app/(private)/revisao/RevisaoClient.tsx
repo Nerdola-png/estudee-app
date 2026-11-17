@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import RodapeLegal from '@/app/components/RodapeLegal';
 import type { RevisaoSessao } from '@/schema/revisao';
 
 type RevisaoClientProps = {
@@ -58,6 +59,14 @@ export default function RevisaoClient({ sessaoId, revisao }: RevisaoClientProps)
                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent">
                   Questão {indice + 1} · {questao.materia}
                 </p>
+                {questao.banca || questao.ano || questao.cargo || questao.estado_prova ? (
+                  <p className="text-xs font-medium text-muted flex items-center gap-1.5">
+                    {questao.banca}{questao.banca && questao.ano ? ' · ' : null}
+                    {questao.ano}{questao.ano && (questao.cargo || questao.estado_prova) ? ' · ' : null}
+                    {questao.cargo}{questao.cargo && questao.estado_prova ? ' · ' : null}
+                    {questao.estado_prova}
+                  </p>
+                ) : null}
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
                   questao.acertou
                     ? 'bg-green/15 text-green'
@@ -154,6 +163,9 @@ export default function RevisaoClient({ sessaoId, revisao }: RevisaoClientProps)
             Fazer outro simulado
           </Link>
         </div>
+
+        <RodapeLegal />
+
       </div>
     </main>
   );

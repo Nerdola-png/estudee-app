@@ -347,6 +347,17 @@ BEGIN
         RAISE EXCEPTION 'carregar_sessao deveria devolver a preferencia nos filtros';
     END IF;
 
+    -- carregar_sessao devolve a origem de cada questão (banca, ano, cargo, estado_prova).
+    IF EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements((public.carregar_sessao(v_sessao_2_id) -> 'questoes')) AS questao
+        WHERE questao ->> 'banca' IS NULL
+           OR questao ->> 'ano' IS NULL
+           OR questao ->> 'estado_prova' IS NULL
+    ) THEN
+        RAISE EXCEPTION 'carregar_sessao deveria devolver a origem de cada questao';
+    END IF;
+
     ---------------------------------------------------------------------------
     -- 8. Revisao: so funciona em sessao finalizada e devolve o gabarito
     --    completo, incluindo questoes respondidas na sessao com preferencia
@@ -388,6 +399,22 @@ BEGIN
         RAISE EXCEPTION 'a revisao deveria trazer a materia: %', v_resultado;
     END IF;
 
+    IF (v_resultado -> 'questoes' -> 0 ->> 'banca') IS DISTINCT FROM 'Banca Teste' THEN
+        RAISE EXCEPTION 'a revisao deveria trazer a banca: %', v_resultado;
+    END IF;
+
+    IF (v_resultado -> 'questoes' -> 0 ->> 'ano')::integer IS DISTINCT FROM 2026 THEN
+        RAISE EXCEPTION 'a revisao deveria trazer o ano: %', v_resultado;
+    END IF;
+
+    IF (v_resultado -> 'questoes' -> 0 ->> 'estado_prova') IS DISTINCT FROM 'PE' THEN
+        RAISE EXCEPTION 'a revisao deveria trazer o estado: %', v_resultado;
+    END IF;
+
+    IF (v_resultado -> 'questoes' -> 0 ->> 'cargo') IS NOT NULL THEN
+        RAISE EXCEPTION 'a revisao nao deveria trazer cargo: %', v_resultado;
+    END IF;
+
     ---------------------------------------------------------------------------
     -- 9. Grants: anon nao pode executar nenhuma das RPCs.
     ---------------------------------------------------------------------------
@@ -403,6 +430,10 @@ BEGIN
         RAISE EXCEPTION 'anon pode executar obter_revisao';
     END IF;
 
+    IF has_function_privilege('anon', 'public.obter_resultado(uuid)', 'EXECUTE') THEN
+        RAISE EXCEPTION 'anon pode executar obter_resultado';
+    END IF;
+
     IF has_function_privilege('anon', 'public.carregar_sessao(uuid)', 'EXECUTE') THEN
         RAISE EXCEPTION 'anon pode executar carregar_sessao';
     END IF;
@@ -413,6 +444,10 @@ BEGIN
 
     IF NOT has_function_privilege('authenticated', 'public.obter_revisao(uuid)', 'EXECUTE') THEN
         RAISE EXCEPTION 'authenticated nao pode executar obter_revisao';
+    END IF;
+
+    IF NOT has_function_privilege('authenticated', 'public.obter_resultado(uuid)', 'EXECUTE') THEN
+        RAISE EXCEPTION 'authenticated nao pode executar obter_resultado';
     END IF;
 
     ---------------------------------------------------------------------------

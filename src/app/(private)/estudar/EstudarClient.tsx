@@ -10,6 +10,7 @@ import {
   useResponderQuestao,
   useSessaoQuiz,
 } from '@/hooks/use-quiz';
+import RodapeLegal from '@/app/components/RodapeLegal';
 
 function formatarTempo(segundos: number) {
   const horas = Math.floor(segundos / 3600);
@@ -211,7 +212,17 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
       <div className="mx-auto max-w-5xl">
         <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-accent">Simulado · {questao.materia}</p>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-accent">
+              Simulado · {questao.materia}
+            </p>
+            {questao.banca || questao.ano || questao.cargo || questao.estado_prova ? (
+              <p className="text-xs font-medium text-muted flex items-center gap-1.5">
+                {questao.banca}{questao.banca && questao.ano ? ' · ' : null}
+                {questao.ano}{questao.ano && (questao.cargo || questao.estado_prova) ? ' · ' : null}
+                {questao.cargo}{questao.cargo && questao.estado_prova ? ' · ' : null}
+                {questao.estado_prova}
+              </p>
+            ) : null}
             <h1 className="font-bebas text-4xl tracking-[0.08em] text-text-base md:text-5xl">
               Questão {indiceAtual + 1} de {totalQuestoes}
             </h1>
@@ -389,6 +400,9 @@ export default function EstudarClient({ sessaoId }: { sessaoId: string }) {
             <p className="mt-2 text-lg font-semibold text-text-base">{respostaAtual ? 'Resposta confirmada' : 'Aguardando resposta'}</p>
           </div>
         </section>
+
+        <RodapeLegal />
+
       </div>
     </main>
   );
