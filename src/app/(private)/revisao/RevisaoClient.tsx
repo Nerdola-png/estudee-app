@@ -59,14 +59,6 @@ export default function RevisaoClient({ sessaoId, revisao }: RevisaoClientProps)
                 <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent">
                   Questão {indice + 1} · {questao.materia}
                 </p>
-                {questao.banca || questao.ano || questao.cargo || questao.estado_prova ? (
-                  <p className="text-xs font-medium text-muted flex items-center gap-1.5">
-                    {questao.banca}{questao.banca && questao.ano ? ' · ' : null}
-                    {questao.ano}{questao.ano && (questao.cargo || questao.estado_prova) ? ' · ' : null}
-                    {questao.cargo}{questao.cargo && questao.estado_prova ? ' · ' : null}
-                    {questao.estado_prova}
-                  </p>
-                ) : null}
                 <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
                   questao.acertou
                     ? 'bg-green/15 text-green'
@@ -94,6 +86,16 @@ export default function RevisaoClient({ sessaoId, revisao }: RevisaoClientProps)
                 </div>
               )}
 
+              {questao.banca || questao.ano || questao.cargo || questao.estado_prova && (
+                <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted">
+                  (
+                  {questao.banca}{questao.banca && questao.ano ? ', ' : null}
+                  {questao.ano}{questao.ano && (questao.cargo || questao.estado_prova) ? ', ' : null}
+                  {questao.cargo}{questao.cargo && questao.estado_prova ? ', ' : null}
+                  {questao.estado_prova}
+                  )
+                </p>
+              )}
               <div className="mb-6 rounded-lg border border-border bg-bg/40 p-4">
                 <p className="text-lg font-medium leading-8 text-text-base md:text-xl">
                   {questao.enunciado}
